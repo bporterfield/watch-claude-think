@@ -19,7 +19,6 @@ export const TIMEOUTS = {
   // File watching timeouts
   fileChange: 3000 * CI_MULTIPLIER,        // 3s in dev, 9s in CI
   newSession: 5000 * CI_MULTIPLIER,        // 5s in dev, 15s in CI
-  newSessionLong: 20000 * CI_MULTIPLIER,   // 20s in dev, 60s in CI
 
   // General operation timeouts
   shortOperation: 1000 * CI_MULTIPLIER,    // 1s in dev, 3s in CI
