@@ -9,7 +9,7 @@
   "homepage": "https://github.com/bporterfield/watch-claude-think",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bporterfield/watch-claude-think.git"
+    "url": "git+https://github.com/bporterfield/watch-claude-think.git"
   },
   "bugs": {
     "url": "https://github.com/bporterfield/watch-claude-think/issues"
@@ -26,7 +26,7 @@
     "ai"
   ],
   "bin": {
-    "watch-claude-think": "./dist/cli.js"
+    "watch-claude-think": "dist/cli.js"
   },
   "engines": {
     "node": ">=18.0.0"
