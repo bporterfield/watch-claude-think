@@ -181,6 +181,11 @@ function extractUserMessage(entry: ClaudeMessageEntry): UserMessage | null {
     return null;
   }
 
+  // Filter out sidechain messages
+  if (entry.isSidechain) {
+    return null;
+  }
+
   const message = entry.message;
 
   if (!('content' in message)) {
@@ -239,30 +244,33 @@ function findRootUserMessage(
   // Walk backwards from leaf to root, keeping the last user message found (which is the root)
   while (current) {
     if (current.type === 'user') {
-      const message = current.message;
-      if ('content' in message) {
-        let text = '';
+      // Skip sidechain messages
+      if (!current.isSidechain) {
+        const message = current.message;
+        if ('content' in message) {
+          let text = '';
 
-        if (typeof message.content === 'string') {
-          text = message.content;
-        } else if (Array.isArray(message.content)) {
-          const textContent = message.content.find(
-            (item) => typeof item === 'object' && item.type === 'text',
-          );
-          if (textContent && 'text' in textContent) {
-            text = textContent.text as string;
-          }
-        }
-
-        if (text) {
-          text = text.trim();
-          if (!isSystemMessage(text)) {
-            // Format for display
-            let formattedText = text.replace(/\r?\n/g, ' ');
-            if (formattedText.length > SESSION_NAME_MAX_LENGTH) {
-              formattedText = formattedText.substring(0, SESSION_NAME_MAX_LENGTH) + '...';
+          if (typeof message.content === 'string') {
+            text = message.content;
+          } else if (Array.isArray(message.content)) {
+            const textContent = message.content.find(
+              (item) => typeof item === 'object' && item.type === 'text',
+            );
+            if (textContent && 'text' in textContent) {
+              text = textContent.text as string;
             }
-            rootUserMessageText = formattedText;
+          }
+
+          if (text) {
+            text = text.trim();
+            if (!isSystemMessage(text)) {
+              // Format for display
+              let formattedText = text.replace(/\r?\n/g, ' ');
+              if (formattedText.length > SESSION_NAME_MAX_LENGTH) {
+                formattedText = formattedText.substring(0, SESSION_NAME_MAX_LENGTH) + '...';
+              }
+              rootUserMessageText = formattedText;
+            }
           }
         }
       }
@@ -279,6 +287,11 @@ function findRootUserMessage(
  * Extract thinking blocks from a message entry
  */
 function extractThinkingBlocks(entry: ClaudeMessageEntry): ThinkingBlock[] {
+  // Filter out thinking blocks from sidechain messages
+  if (entry.isSidechain) {
+    return [];
+  }
+
   const message = entry.message;
 
   if (!('content' in message) || !Array.isArray(message.content)) {
@@ -503,6 +516,11 @@ export async function extractSessionInfo(filePath: string): Promise<{
 
           // Skip system messages (marked with isMeta: true or containing toolUseResult)
           if (messageEntry.isMeta || messageEntry.toolUseResult) {
+            return;
+          }
+
+          // Skip sidechain messages
+          if (messageEntry.isSidechain) {
             return;
           }
 
