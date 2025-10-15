@@ -26,10 +26,13 @@ const ProjectItem: React.FC<ItemProps> = ({ isSelected = false, label, colorMap,
 
   // Add worktree indicators and visual hierarchy
   if (projectInfo?.worktreeInfo) {
-    const { isWorktree, isMainRepo, branch } = projectInfo.worktreeInfo;
+    const { isWorktree, isMainRepo, branch, relatedWorktrees } = projectInfo.worktreeInfo;
 
-    if (isWorktree) {
-      // Indent worktrees to show hierarchy
+    // Orphaned worktree: has worktree info but no related worktrees
+    const isOrphaned = isWorktree && relatedWorktrees.length === 0;
+
+    if (isWorktree && !isOrphaned) {
+      // Indent non-orphaned worktrees to show hierarchy
       displayText = chalk.dim('  ├─ ') + displayText;
       if (isSelected && branch) {
         displayText = displayText + chalk.dim(` [${branch}]`);
@@ -38,8 +41,8 @@ const ProjectItem: React.FC<ItemProps> = ({ isSelected = false, label, colorMap,
       if (isSelected) {
         displayText = displayText + chalk.dim(' [main]');
       }
-    } else if (!isWorktree && !isMainRepo && branch) {
-      // Regular git repo - show branch only when selected
+    } else if (branch) {
+      // Regular git repo or orphaned worktree - show branch only when selected
       if (isSelected) {
         displayText = displayText + chalk.dim(` [${branch}]`);
       }
@@ -100,7 +103,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, onSe
         repoPath = worktreeInfo.mainRepoPath;
       }
 
-      if (!repoPath) {
+      // Orphaned worktree: has worktree info but no valid repo relationship
+      // Treat as standalone (main repo might have been deleted/recreated)
+      if (!repoPath || (worktreeInfo.isWorktree && worktreeInfo.relatedWorktrees.length === 0)) {
         standaloneProjects.push(project);
         continue;
       }
@@ -122,10 +127,28 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, onSe
       }
     }
 
+    // Create index map from original projects array (already sorted by recency)
+    const projectIndex = new Map<string, number>();
+    projects.forEach((p, i) => projectIndex.set(p.path, i));
+
     // Build sorted list: for each repo group, show main followed by worktrees
+    // Sort groups by most recent activity (earliest index in original array)
+    const sortedGroups = Array.from(repoPathToProjects.entries())
+      .map(([repoPath, group]) => {
+        // Find earliest index (most recent) in this group
+        const allProjectsInGroup = [group.main, ...group.worktrees].filter(
+          Boolean,
+        ) as ProjectInfo[];
+        const earliestIndex = Math.min(
+          ...allProjectsInGroup.map((p) => projectIndex.get(p.path) ?? Infinity),
+        );
+        return { repoPath, group, earliestIndex };
+      })
+      .sort((a, b) => a.earliestIndex - b.earliestIndex);
+
     const sorted: ProjectInfo[] = [];
 
-    for (const group of repoPathToProjects.values()) {
+    for (const { group } of sortedGroups) {
       if (group.main) {
         sorted.push(group.main);
       }
