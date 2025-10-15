@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "baseUrl": ".",
+    "composite": true,
+    "incremental": true,
+    "tsBuildInfoFile": "dist/.tsbuildinfo/index.tsbuildinfo",
+    "target": "es2022",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "declaration": true,
+    "declarationMap": true,
+    "rootDir": ".",
+    "jsx": "react",
+    "noEmit": true
+  },
+  "include": ["src", "test", "research"],
+  "exclude": ["node_modules", "**/node_modules", "dist", "coverage", "**/*.tsbuildinfo", "scratch"]
+}

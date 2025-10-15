@@ -1,0 +1,11 @@
+dist/
+**/dist/
+node_modules/
+**/node_modules/
+coverage/
+**/*.tsbuildinfo
+.git/
+*.d.ts
+**/*.d.ts
+*.map
+**/*.map
