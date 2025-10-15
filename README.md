@@ -3,7 +3,6 @@
 > A real-time view into Claude Code's thinking brain
 
 [![npm version](https://img.shields.io/npm/v/watch-claude-think.svg)](https://www.npmjs.com/package/watch-claude-think)
-[![npm downloads](https://img.shields.io/npm/dm/watch-claude-think.svg)](https://www.npmjs.com/package/watch-claude-think)
 [![CI](https://github.com/bporterfield/watch-claude-think/actions/workflows/ci.yml/badge.svg)](https://github.com/bporterfield/watch-claude-think/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/watch-claude-think.svg)](https://nodejs.org)
