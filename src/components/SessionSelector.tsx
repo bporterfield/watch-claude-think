@@ -4,7 +4,6 @@ import chalk from 'chalk';
 import type { ConversationInfo } from '../lib/file-system.js';
 import { getProjectColor } from '../lib/colors.js';
 import { NonWrappingSelectInput } from './NonWrappingSelectInput.js';
-import { SESSION_ID_DISPLAY_LENGTH } from '../lib/constants.js';
 import { useSelectInputLimit } from '../hooks/useSelectInputLimit.js';
 
 interface SessionSelectorProps {
@@ -34,14 +33,14 @@ const SessionItem: React.FC<SessionItemProps> = ({ isSelected = false, label }) 
     );
   }
 
-  const [name, timeAgo, sessionId] = parts;
+  const [name, timeAgo, gitBranch] = parts;
 
   return (
     <Box flexDirection="column" marginBottom={1}>
       <Text>{isSelected ? `> ${name}` : `  ${name}`}</Text>
       <Text dimColor>
         {' '}
-        {timeAgo} · {sessionId}
+        {gitBranch ? `${timeAgo} · ${gitBranch}` : timeAgo}
       </Text>
     </Box>
   );
@@ -86,7 +85,7 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
         value: 'all' as const,
       },
       ...sessions.map((session) => ({
-        label: `${session.name}|||${formatTimeAgo(session.mtime)}|||${session.sessionId.substring(0, SESSION_ID_DISPLAY_LENGTH)}`,
+        label: `${session.name}|||${formatTimeAgo(session.mtime)}|||${session.gitBranch || ''}`,
         value: session.id,
       })),
     ],

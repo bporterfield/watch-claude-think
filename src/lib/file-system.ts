@@ -35,6 +35,7 @@ export interface ConversationInfo {
   sessionId: string; // Session file id (filename without .jsonl)
   leafUuid: string; // The leaf UUID for this conversation branch
   mtime: Date; // Timestamp of last message in this conversation (the leaf)
+  gitBranch: string | null; // Git branch from the last message in this conversation
 }
 
 /**
@@ -472,6 +473,7 @@ export async function listConversations(projectPath: string): Promise<Conversati
             sessionId: result.sessionId,
             leafUuid: branch.leafUuid,
             mtime: new Date(branch.timestamp),
+            gitBranch: branch.gitBranch,
           });
           continue;
         }
@@ -504,6 +506,7 @@ export async function listConversations(projectPath: string): Promise<Conversati
           sessionId: result.sessionId,
           leafUuid: branch.leafUuid,
           mtime: new Date(branch.timestamp),
+          gitBranch: branch.gitBranch,
         });
       }
     }
