@@ -10,7 +10,7 @@
 
 **watch-claude-think** is an interactive CLI - like Claude Code - that monitors your Claude Code sessions and displays both `claude`'s internal reasoning process and user messages in real-time. Watch as Claude Code thinks through problems, plans solutions, and makes decisions.
 
-<img width="1132" height="384" alt="Screenshot 2025-10-10 at 3 52 45 PM" src="https://github.com/user-attachments/assets/0acf74ba-f600-4ace-90a8-d88bf35356b9" />
+<img width="1135" height="384" alt="Screenshot 2025-10-10 at 3 51 49 PM" src="https://github.com/user-attachments/assets/530ea39f-45db-4756-b5e2-b894d0323a63" />
 
 ## Quick Start
 
