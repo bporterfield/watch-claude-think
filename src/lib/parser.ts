@@ -863,6 +863,7 @@ export interface ConversationBranch {
   fallbackName: string | null;
   timestamp: string;
   messageCount: number;
+  gitBranch: string | null;
 }
 
 /**
@@ -953,6 +954,7 @@ export async function extractSummariesAndConversations(filePath: string): Promis
           fallbackName: findRootUserMessage(leaf, messageMap),
           timestamp: leaf.timestamp,
           messageCount: chain.length,
+          gitBranch: leaf.gitBranch || null,
         };
       });
 
@@ -1055,6 +1057,7 @@ export async function getAllConversationsInFile(
           fallbackName: findRootUserMessage(leaf, messageMap),
           timestamp: leaf.timestamp,
           messageCount: chain.length,
+          gitBranch: leaf.gitBranch || null,
         };
       });
 
