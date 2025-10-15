@@ -32,8 +32,8 @@
     "node": ">=18.0.0"
   },
   "files": [
-    "dist/cli.js",
-    "dist/brain-absolutely"
+    "dist/**/*",
+    "!dist/.tsbuildinfo"
   ],
   "scripts": {
     "build": "tsc -b",
