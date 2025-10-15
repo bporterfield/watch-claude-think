@@ -449,6 +449,17 @@ export async function listConversations(projectPath: string): Promise<Conversati
         // Use cross-file summary if this conversation doesn't have one
         const finalSummary = branch.summary || globalSummaryMap.get(branch.leafUuid) || null;
 
+        // Skip conversations with no real user interaction:
+        // - No summary AND no non-sidechain user messages (fallbackName is null)
+        // These are typically warmup sessions, canceled sessions, or internal operations
+        if (!finalSummary && !branch.fallbackName) {
+          logger.debug('[listConversations] Skipping conversation with no user interaction', {
+            sessionId: result.sessionId,
+            leafUuid: branch.leafUuid,
+          });
+          continue;
+        }
+
         allConversations.push({
           id: `${result.sessionId}-${branch.leafUuid}`,
           name: finalSummary || branch.fallbackName || 'Unnamed conversation',
