@@ -14,7 +14,7 @@
 
 ## Quick Start
 
-**TL;DR**: Turn thinking on (`Tab` to toggle in `claude`) and then `npx watch-claude-think` and you're in the brain.
+**TL;DR**: Turn thinking on (`Tab` to toggle in `claude`) and then run `npx watch-claude-think` and you're in the brain.
 
 Or with other package managers:
 
@@ -62,6 +62,8 @@ yarn global add watch-claude-think
 bun add -g watch-claude-think
 ```
 
+then run `watch-claude-think`
+
 ## Usage
 
 ### Step 1: Enable Thinking Mode in Claude Code
@@ -74,7 +76,7 @@ Run `npx watch-claude-think` (or `watch-claude-think` if installed globally)
 
 ### Step 3: Select What to Watch
 
-1. Pick your project (or project's worktree) from the list
+1. Pick your project (or a project's worktree) from the list
 2. Choose either:
    - **Watch All Sessions** - see all Claude activity in this project
    - **Watch Specific Session** - focus on one conversation
@@ -96,7 +98,7 @@ Some things that might make you want to jump in to wrangle `claude`:
 ## Requirements
 
 - **Node.js** 18+
-- **Active Claude Code sessions** watch-claude-think reads from `~/.claude/projects`
+- **Active Claude Code sessions** `watch-claude-think` reads from `~/.claude/projects`
 
 ## License
 
