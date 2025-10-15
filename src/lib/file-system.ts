@@ -446,8 +446,45 @@ export async function listConversations(projectPath: string): Promise<Conversati
 
     for (const result of fileResults) {
       for (const branch of result.conversations) {
-        // Use cross-file summary if this conversation doesn't have one
-        const finalSummary = branch.summary || globalSummaryMap.get(branch.leafUuid) || null;
+        // Skip conversations with no real user interaction FIRST:
+        // - No non-sidechain user messages (fallbackName is null)
+        // These are typically warmup sessions, canceled sessions, or internal operations
+        // We check this BEFORE applying cross-file summaries because those summaries
+        // are meant for the original conversation, not for sidechain-only warmup messages
+        if (!branch.fallbackName) {
+          // Only use local summary if it exists, not cross-file summaries
+          const localSummary = branch.summary;
+
+          // Skip if no local summary either
+          if (!localSummary) {
+            logger.debug('[listConversations] Skipping conversation with no user interaction', {
+              sessionId: result.sessionId,
+              leafUuid: branch.leafUuid,
+            });
+            continue;
+          }
+
+          // Has local summary but no user messages - unusual but keep it
+          allConversations.push({
+            id: `${result.sessionId}-${branch.leafUuid}`,
+            name: localSummary,
+            sessionPath: result.filePath,
+            sessionId: result.sessionId,
+            leafUuid: branch.leafUuid,
+            mtime: new Date(branch.timestamp),
+          });
+          continue;
+        }
+
+        // Has real user messages - use cross-file summary if available
+        let finalSummary = branch.summary || globalSummaryMap.get(branch.leafUuid) || null;
+
+        // Filter out API error messages masquerading as summaries
+        // These are error messages from resumed sessions, not real conversation names
+        // Pattern: "API Error: 400 {"type":"error",...}"
+        if (finalSummary && /^API Error: \d+ \{"type":"error"/.test(finalSummary)) {
+          finalSummary = null;
+        }
 
         // Skip conversations with no real user interaction:
         // - No summary AND no non-sidechain user messages (fallbackName is null)
