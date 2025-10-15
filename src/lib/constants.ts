@@ -6,6 +6,17 @@
  */
 
 /**
+ * Detect if running in CI environment
+ */
+const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
+/**
+ * CI multiplier for timing-sensitive operations
+ * File operations are slower in CI, so we need more conservative timeouts
+ */
+const CI_MULTIPLIER = isCI ? 2 : 1;
+
+/**
  * Maximum number of message blocks to load initially
  *
  * Controls how many messages are loaded from disk on startup.
@@ -122,18 +133,28 @@ export const SESSION_ID_DISPLAY_LENGTH = 8;
  * How long a file must be stable before triggering a change event.
  * Prevents multiple events during rapid file writes.
  *
- * Default: 200ms
+ * Default: 200ms (400ms in CI)
  */
-export const WATCHER_STABILITY_THRESHOLD = 200;
+export const WATCHER_STABILITY_THRESHOLD = 200 * CI_MULTIPLIER;
 
 /**
  * File watcher poll interval in milliseconds
  *
  * How often to check for file changes when using polling.
  *
- * Default: 50ms
+ * Default: 50ms (100ms in CI)
  */
-export const WATCHER_POLL_INTERVAL = 50;
+export const WATCHER_POLL_INTERVAL = 50 * CI_MULTIPLIER;
+
+/**
+ * Watcher settling delay in milliseconds
+ *
+ * Time to wait after chokidar 'ready' event before considering watcher fully active.
+ * Prevents race conditions where files are created before watcher is fully watching.
+ *
+ * Default: 100ms (200ms in CI)
+ */
+export const WATCHER_READY_SETTLING_DELAY = 100 * CI_MULTIPLIER;
 
 /**
  * Queue concurrency for file operations
