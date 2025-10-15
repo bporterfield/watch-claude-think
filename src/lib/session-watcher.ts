@@ -6,6 +6,7 @@ import {
   FILE_OPERATION_QUEUE_CONCURRENCY,
   WATCHER_STABILITY_THRESHOLD,
   WATCHER_POLL_INTERVAL,
+  WATCHER_READY_SETTLING_DELAY,
   BYTES_TO_MB,
 } from './constants.js';
 
@@ -178,9 +179,14 @@ export class SessionWatcher {
   /**
    * Wait for the watcher to be ready
    * Must be called before the watcher will detect file changes
+   *
+   * Includes a settling delay after the 'ready' event to ensure chokidar
+   * is fully watching before files are created, preventing race conditions
    */
   async waitForReady(): Promise<void> {
     await this.readyPromise;
+    // Give chokidar time to fully settle after ready event
+    await new Promise(resolve => setTimeout(resolve, WATCHER_READY_SETTLING_DELAY));
   }
 
   /**

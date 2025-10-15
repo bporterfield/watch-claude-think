@@ -348,9 +348,6 @@ describe("file-watching integration", () => {
 
     await watcher.waitForReady();
 
-    // Wait a bit for the watcher to settle after initialization
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
     // Create a new session with leafUuid pointing to a non-existent parent
     // This simulates Claude Code's auto-linking behavior where new sessions
     // get a summary with leafUuid from a previous session that might not be watched
