@@ -217,7 +217,7 @@ describe('end-to-end workflow', () => {
     // Wait for new session detection (with automatic retry in CI environments)
     await waitForWithRetry(
       () => newSessionDetected,
-      TIMEOUTS.newSessionLong,
+      TIMEOUTS.newSession,
       undefined,
       'new session detection'
     );
