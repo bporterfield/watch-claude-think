@@ -304,6 +304,9 @@ describe('Settings Watcher Integration', () => {
     });
 
     it('should support unsubscribing from changes', async () => {
+      // Create initial settings file
+      await fs.writeFile(settingsPath, JSON.stringify({ alwaysThinkingEnabled: false }));
+
       const manager = new SettingsManager(claudeDir);
 
       await manager.initialize();
@@ -313,7 +316,7 @@ describe('Settings Watcher Integration', () => {
         callCount++;
       });
 
-      // Create settings file (should trigger callback)
+      // Change settings file (should trigger callback)
       await fs.writeFile(settingsPath, JSON.stringify({ alwaysThinkingEnabled: true }));
 
       await waitForWithRetry(() => callCount > 0, TIMEOUTS.fileChange, undefined, 'initial change notification');
@@ -336,6 +339,9 @@ describe('Settings Watcher Integration', () => {
     });
 
     it('should support multiple listeners', async () => {
+      // Create initial settings file
+      await fs.writeFile(settingsPath, JSON.stringify({ alwaysThinkingEnabled: false }));
+
       const manager = new SettingsManager(claudeDir);
 
       await manager.initialize();
