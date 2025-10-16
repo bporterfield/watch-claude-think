@@ -7,6 +7,7 @@ import {
   createTempClaudeDir,
   cleanupTempDir,
   waitFor,
+  waitForWithRetry,
   TIMEOUTS,
 } from '../helpers/index.js';
 
@@ -315,7 +316,7 @@ describe('Settings Watcher Integration', () => {
       // Create settings file (should trigger callback)
       await fs.writeFile(settingsPath, JSON.stringify({ alwaysThinkingEnabled: true }));
 
-      await waitFor(() => callCount > 0, TIMEOUTS.fileChange, 'initial change notification');
+      await waitForWithRetry(() => callCount > 0, TIMEOUTS.fileChange, undefined, 'initial change notification');
 
       const initialCallCount = callCount;
 
@@ -354,9 +355,10 @@ describe('Settings Watcher Integration', () => {
       await fs.writeFile(settingsPath, JSON.stringify({ alwaysThinkingEnabled: true }));
 
       // Wait for both listeners to be called
-      await waitFor(
+      await waitForWithRetry(
         () => listener1Called && listener2Called,
         TIMEOUTS.fileChange,
+        undefined,
         'multiple listeners notified',
       );
 
