@@ -7,6 +7,7 @@ import type { ChalkInstance } from 'chalk';
 import { NonWrappingSelectInput } from './NonWrappingSelectInput.js';
 import chalk from 'chalk';
 import { useSelectInputLimit } from '../hooks/useSelectInputLimit.js';
+import { useClaudeSettings } from '../hooks/useClaudeSettings.js';
 
 interface ProjectSelectorProps {
   projects: ProjectInfo[];
@@ -72,6 +73,9 @@ const ProjectItem: React.FC<ItemProps> = ({ isSelected = false, label, colorMap,
 export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ projects, onSelect }) => {
   // Calculate dynamic list limit based on terminal height
   const limit = useSelectInputLimit();
+
+  // Get Claude settings (alwaysThinkingEnabled available for future use)
+  const { alwaysThinkingEnabled: _alwaysThinkingEnabled } = useClaudeSettings();
 
   // Sort projects to group worktrees with their main repos
   const sortedProjects = React.useMemo(() => {

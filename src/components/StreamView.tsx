@@ -18,6 +18,7 @@ import { useSessionServices } from '../hooks/useSessionServices.js';
 import { useCustomRenderer } from '../hooks/useCustomRenderer.js';
 import { useKeyboardInput } from '../hooks/useKeyboardInput.js';
 import { useTerminalResize } from '../hooks/useTerminalResize.js';
+import { useClaudeSettings } from '../hooks/useClaudeSettings.js';
 
 interface StreamViewProps {
   sessionFiles: SessionFile[];
@@ -53,6 +54,9 @@ export const StreamView: React.FC<StreamViewProps> = ({ sessionFiles, onBack }) 
     [sessionColorMap],
   );
 
+  // Get Claude settings
+  const { alwaysThinkingEnabled } = useClaudeSettings();
+
   // Render footer to string
   const renderFooter = useCallback((): string => {
     return renderFooterToString({
@@ -62,8 +66,9 @@ export const StreamView: React.FC<StreamViewProps> = ({ sessionFiles, onBack }) 
       sessionName: singleSessionInfo?.sessionName,
       showBack: !!onBack,
       terminalWidth: process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH,
+      alwaysThinkingEnabled: alwaysThinkingEnabled ?? false,
     });
-  }, [isSingleSession, isWatchingAllForProject, projectName, singleSessionInfo, onBack]);
+  }, [isSingleSession, isWatchingAllForProject, projectName, singleSessionInfo, onBack, alwaysThinkingEnabled]);
 
   // Memoize initial render frame to avoid recreating on every render
   const initialRenderFrame = useMemo(
