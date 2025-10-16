@@ -67,7 +67,7 @@ then run `watch-claude-think`
 
 ### Step 1: Enable Thinking Mode in Claude Code
 
-Press `Tab` in Claude Code to cycle thinking mode **ON** (it must show extended thinking)
+Press `Tab` in Claude Code to cycle thinking mode **ON** while you do work
 
 ### Step 2: Start Watching
 
