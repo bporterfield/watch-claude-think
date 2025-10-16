@@ -39,7 +39,7 @@ const SessionItem: React.FC<SessionItemProps> = ({ isSelected = false, label }) 
     <Box flexDirection="column" marginBottom={1}>
       <Text>{isSelected ? `> ${name}` : `  ${name}`}</Text>
       <Text dimColor>
-        {' '}
+        {'  '}
         {gitBranch ? `${timeAgo} · ${gitBranch}` : timeAgo}
       </Text>
     </Box>
