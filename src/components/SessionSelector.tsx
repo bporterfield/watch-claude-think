@@ -5,6 +5,7 @@ import type { ConversationInfo } from '../lib/file-system.js';
 import { getProjectColor } from '../lib/colors.js';
 import { NonWrappingSelectInput } from './NonWrappingSelectInput.js';
 import { useSelectInputLimit } from '../hooks/useSelectInputLimit.js';
+import { useClaudeSettings } from '../hooks/useClaudeSettings.js';
 
 interface SessionSelectorProps {
   sessions: ConversationInfo[];
@@ -57,6 +58,9 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
   // Calculate dynamic list limit based on terminal height
   // SessionItems take 3 rows each: name (1) + metadata (1) + marginBottom (1)
   const limit = useSelectInputLimit(3);
+
+  // Get Claude settings (alwaysThinkingEnabled available for future use)
+  const { alwaysThinkingEnabled: _alwaysThinkingEnabled } = useClaudeSettings();
 
   useInput((input, key) => {
     if (key.escape && onBack) {

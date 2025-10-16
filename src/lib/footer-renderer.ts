@@ -17,6 +17,7 @@ export interface FooterOptions {
   sessionName?: string;
   showBack: boolean;
   terminalWidth: number;
+  alwaysThinkingEnabled: boolean;
 }
 
 /**
@@ -38,6 +39,7 @@ export function renderFooterToString(options: FooterOptions): string {
     sessionName,
     showBack,
     terminalWidth,
+    alwaysThinkingEnabled,
   } = options;
 
   const lines: string[] = [];
@@ -79,7 +81,17 @@ export function renderFooterToString(options: FooterOptions): string {
 
   // Navigation instructions (dim) - WITH PADDING
   if (showBack) {
-    lines.push(leftPadding + chalk.dim('ESC to go back | Ctrl+C to exit'));
+    // Build navigation line with thinking mode status
+    // We need to apply dim selectively to keep the colors vibrant
+    let navLine = leftPadding + chalk.dim('ESC to go back | Ctrl+C to exit | Thinking mode: ');
+
+    if (alwaysThinkingEnabled) {
+      navLine += chalk.green('on');
+    } else {
+      navLine += chalk.red('off') + chalk.dim(' (press Tab in claude code to turn on)');
+    }
+
+    lines.push(navLine);
   }
 
   return lines.join('\n');

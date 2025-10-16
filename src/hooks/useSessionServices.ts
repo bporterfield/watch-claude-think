@@ -117,7 +117,7 @@ export function useSessionServices({
       };
       void cleanup();
     };
-  }, [sessionFiles, initialRenderFrame]);
+  }, [sessionFiles]);
 
   return {
     messageBlocks,

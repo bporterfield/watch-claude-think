@@ -32,6 +32,42 @@ export function useCustomRenderer({
   // Track how many blocks we've already rendered
   const staticContentBlockCountRef = useRef(0);
 
+  // Track previous footer to detect changes
+  const previousFooterRef = useRef<string>('');
+
+  // Handle footer changes (e.g., settings updates) - re-render footer only
+  useEffect(() => {
+    if (!renderLogger) return;
+
+    const currentFooter = renderFooter();
+
+    // Skip if footer hasn't changed
+    if (currentFooter === previousFooterRef.current) return;
+
+    // Update ref
+    previousFooterRef.current = currentFooter;
+
+    // Create frame with no new static content, just updated footer
+    const frame: RenderFrame = {
+      staticOutput: '',
+      dynamicOutput: currentFooter,
+      columns: process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH,
+      rows: process.stdout.rows ?? DEFAULT_TERMINAL_HEIGHT,
+    };
+
+    // Generate operations via logger
+    const operations = renderLogger.render(frame);
+
+    // Execute operations
+    if (operations.length > 0) {
+      const terminal: Terminal = {
+        stdout: process.stdout,
+        stderr: process.stderr,
+      };
+      executeTerminalOperations(terminal, operations);
+    }
+  }, [renderFooter, renderLogger]);
+
   // Handle new messages - render and write via logger
   useEffect(() => {
     if (!renderLogger) return;
@@ -54,9 +90,10 @@ export function useCustomRenderer({
         .join('\n');
 
       // Create frame with new static content
+      const currentFooter = renderFooter();
       const frame: RenderFrame = {
         staticOutput: newStaticOutput,
-        dynamicOutput: renderFooter(),
+        dynamicOutput: currentFooter,
         columns: process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH,
         rows: process.stdout.rows ?? DEFAULT_TERMINAL_HEIGHT,
       };
@@ -73,8 +110,9 @@ export function useCustomRenderer({
         executeTerminalOperations(terminal, operations);
       }
 
-      // Update counter
+      // Update refs
       staticContentBlockCountRef.current = messageBlocks.length;
+      previousFooterRef.current = currentFooter;
     }
   }, [
     messageBlocks,
