@@ -2,24 +2,24 @@
 
 ## Executive Summary
 
-**watch-claude-think** is a real-time CLI tool that monitors Claude Code sessions and displays both internal reasoning (thinking blocks) and user messages. It reads Claude Code's session files from `~/.claude/projects/`, parses JSONL message streams, and renders them in a terminal UI.
+**watch-claude-think** monitors Claude Code sessions and displays internal reasoning (thinking blocks) and user messages in real time. It reads session files from `~/.claude/projects/`, parses JSONL message streams, and renders them in a terminal UI.
 
-**Key Innovation**: Custom terminal rendering pipeline that bypasses React/Ink's reconciliation to achieve 10K+ message display with instant resize and minimal memory overhead.
+**Key Innovation**: Custom terminal rendering pipeline that bypasses React/Ink reconciliation to display 10K+ messages with instant resize and minimal memory overhead.
 
 **Critical Constraints**:
-- Must handle thousands of messages efficiently
+- Handle thousands of messages efficiently
 - Terminal resize must not create visual artifacts
 - Real-time file watching across multiple sessions
 - Support complex conversation branching
 
-**Trade-offs Made**:
+**Trade-offs**:
 - Performance over framework idioms (custom rendering vs React)
 - Memory over persistence (in-memory store)
 - Simplicity over features (no database, no pagination)
 
 ## System Design
 
-### High-Level Architecture
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -58,7 +58,7 @@
 2. **Service Layer**: Coordinates file watching, message parsing, and storage
 3. **Data Layer**: File system operations, JSONL parsing, real-time monitoring
 
-### Key Design Decisions
+### Design Decisions
 
 - **Hybrid Rendering**: Ink for interactive components, custom for message display
 - **Streaming Architecture**: Parse files incrementally, display immediately
@@ -67,11 +67,11 @@
 
 ## Technical Strategy
 
-### Why Custom Rendering Over React/Ink
+### Custom Rendering Over React/Ink
 
 **Problem**: Ink's `<Static>` component creates "ghost lines" on terminal resize.
 
-When terminal width changes, text reflows to different line counts. Static doesn't track what it previously rendered, leaving duplicate content visible. After trying multiple workarounds (force re-renders, manual cleanup, virtualization), we adopted a custom approach.
+Terminal width changes reflow text to different line counts. Static doesn't track previous renders, leaving duplicate content visible. After trying multiple workarounds (force re-renders, manual cleanup, virtualization), we adopted a custom approach.
 
 **Solution**: Accumulate messages as a string, clear and redraw on resize.
 
@@ -92,7 +92,7 @@ class CustomRenderLogger {
 }
 ```
 
-### Why JSONL Over Database
+### JSONL Over Database
 
 **Claude Code's Choice**: Append-only JSONL files per session.
 
@@ -104,14 +104,14 @@ class CustomRenderLogger {
 
 **Trade-off**: No complex queries, but we only need chronological streaming.
 
-### Why In-Memory Message Store
+### In-Memory Message Store
 
 **Design**: Keep all messages in memory after initial load.
 
 **Rationale**:
 - Messages are immutable once displayed
 - ~1KB per message (1000 messages ≈ 1MB)
-- Enables instant rendering without file I/O
+- Instant rendering without file I/O
 - Simplifies deduplication and sorting
 
 **Constraint**: Initial load capped at 500 most recent blocks to bound memory.
@@ -157,7 +157,7 @@ I/O = Initial discovery + Incremental reads (position-based)
 
 ### JSONL Format
 
-Each line is a complete JSON object, enabling:
+Each line is a complete JSON object:
 - Append-only writes (Claude Code)
 - Streaming reads (watch-claude-think)
 - Partial file recovery after crashes

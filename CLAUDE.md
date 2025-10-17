@@ -30,20 +30,20 @@
 
 **If you need to explain it, it's too complex**
 
-- The code itself should read like documentation
+- Code should read like documentation
 - Variable/function names should make comments unnecessary
 
 ## Process
 
 ### 1. Planning & Staging
 
-Break complex work into 3-5 stages. Document in `docs/IMPLEMENTATION_PLAN.md`:
+Document complex work in 3-5 stages in `docs/IMPLEMENTATION_PLAN.md`:
 
 ```markdown
 ## Stage 1: Add User Profile Endpoint
 
 **Goal**: Create GET /users/:id endpoint that returns user profile
-**Success Criteria**:
+**Criteria**:
 
 - Returns 200 with user data for valid ID
 - Returns 404 for non-existent user
@@ -55,7 +55,7 @@ Break complex work into 3-5 stages. Document in `docs/IMPLEMENTATION_PLAN.md`:
 ## Stage 2: Add Profile Edit Endpoint
 
 **Goal**: Create PUT /users/:id endpoint for profile updates
-**Success Criteria**:
+**Criteria**:
 
 - Updates allowed fields only
 - Returns 403 if user doesn't own profile
@@ -78,12 +78,12 @@ Break complex work into 3-5 stages. Document in `docs/IMPLEMENTATION_PLAN.md`:
    - Identify common patterns and conventions
    - Note libraries and utilities already in use
 
-2. **Test** -
+2. **Test** - Write failing test
    - Test should fail for the right reason
    - One assertion per test when possible
    - Clear test name describing scenario
 
-3. **Implement** - Minimal code to pass (green)
+3. **Implement** - Minimal code to pass
    - Write only enough code to make test pass
    - No extra features or optimizations yet
 
@@ -92,11 +92,11 @@ Break complex work into 3-5 stages. Document in `docs/IMPLEMENTATION_PLAN.md`:
    - Improve naming
    - Simplify complex logic
 
-5. **Commit** - With clear message linking to plan
+5. **Commit** - Clear message linking to plan
    - Reference stage number from implementation plan
    - Explain "why" not just "what"
 
-### 3. When Stuck (After 3 Attempts)
+### 3. When Stuck
 
 **CRITICAL**: Maximum 3 attempts per issue, then STOP.
 
@@ -247,7 +247,7 @@ Use this priority order. Testability trumps all else.
 ## Debugging
 
 - **Use Breakpoint MCP server to step through code**
-- **write scratch files to `scratch/` to test assumptions, try things, or to get to breakpoints easier**
+- **Write scratch files to `scratch/` to test assumptions, try things, or to get to breakpoints easier**
 
 See @DEBUGGING.md for more details
 
