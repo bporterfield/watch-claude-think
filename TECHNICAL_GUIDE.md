@@ -4,7 +4,7 @@
 
 ## Overview
 
-This guide provides comprehensive implementation details for developers working on watch-claude-think. For high-level architecture decisions, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+Implementation details for developers working on watch-claude-think. For architecture decisions, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ## Technologies
 
@@ -44,7 +44,7 @@ This guide provides comprehensive implementation details for developers working 
 
 #### Main App (`App.tsx`)
 
-Navigation state machine with 4 stages:
+Navigation state machine:
 
 1. **loading** - Initialize project discovery
 2. **select-project** - User picks project from list
@@ -314,7 +314,6 @@ Claude Code's session files use JSONL (JSON Lines) format where each line is a c
 {"type":"message","role":"assistant","content":[{"type":"thinking","text":"Let me plan this..."}],"uuid":"ghi789","parentUuid":"def456"}
 ```
 
-Key characteristics:
 - One JSON object per line
 - Append-only for crash resistance
 - Streamable for incremental parsing
@@ -384,7 +383,7 @@ Key characteristics:
 - **File positions**: LRU cache of 100 entries (~10KB)
 - **String accumulation**: Full static output (~1KB per message)
 
-**Typical session**:
+**Example session**:
 - 500 initial blocks = ~500KB
 - 1000 additional blocks = ~1MB
 - Total: ~2MB for 1500 messages
@@ -534,7 +533,7 @@ DEBUG=render npm run dev
 
 ## Contributing
 
-### Development Workflow
+### Workflow
 
 1. **Setup**:
    ```bash
