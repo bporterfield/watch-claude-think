@@ -1,6 +1,6 @@
 {
   "name": "watch-claude-think",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A real-time view into Claude Code's thinking brain",
   "license": "MIT",
   "author": "bporterfield",
