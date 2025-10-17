@@ -25,10 +25,10 @@ Or with other package managers:
 
 Watching Claude Code think is fun, and quite useful!
 
-- You can often catch it making silly assumptions about things and interject before it goes off the rails
-- Watching it work through problems also often provides some inspiration or additional ideas about architecure, dependencies, etc.
-- It's also a great way to learn how to improve your prompting - it will be quite obvious when Claude has the context it needs and when it does not.
-- Claude will also often think things that it does not output, and often those things are worth knowing
+* You can catch it making silly assumptions and interject before it goes off the rails
+* Watching it work through problems often provides inspiration or ideas about architecure, dependencies, etc.
+* It's a great way to learn how to improve prompting - it will be quite obvious when Claude has the context it needs and when it does not
+* Claude will think things that it does not output and sometimes those things are worth reading
 
 Also, sometimes it's a riot:
 
