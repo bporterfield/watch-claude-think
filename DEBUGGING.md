@@ -2,7 +2,7 @@
 
 ## Debugging Decision Tree
 
-When you encounter an issue, follow this decision tree:
+When you encounter an issue:
 
 1. **Can you write a test for it?**
    → Write failing test first, then fix the code
@@ -40,7 +40,7 @@ When you encounter an issue, follow this decision tree:
 
 **CRITICAL**: Prefer breakpoint debugging over console.log statements.
 
-You have access to a Node.js debugger through the Breakpoint MCP server. Use it proactively when:
+The Breakpoint MCP server provides Node.js debugging. Use it when:
 
 - Investigating runtime issues or unexpected behavior
 - Understanding execution flow through complex code
@@ -49,7 +49,7 @@ You have access to a Node.js debugger through the Breakpoint MCP server. Use it 
 
 ### Best Practices
 
-1. **Always check if files are loaded first**
+1. **Check if files are loaded first**
    - Use `runtime_list_scripts` before setting breakpoints
    - Verify the exact file path in the loaded scripts list
 
@@ -95,37 +95,39 @@ Prefer creating quick Typescript files in `scratch/` over inline tsx files or co
 - ❌ jq (NOT installed - do not use)
 - ❌ Complex bash loops (prone to parse errors in single-line mode)
 
-#### Rules
+### Rules
 
 1. **File operations**: Use Read/Grep/Glob tools, NOT cat/head/tail/find
 2. **JSON parsing**: Use python3, NOT jq
 3. **Multiple files**: Make parallel Read calls, NOT bash loops
 4. **Complex operations**: Break into simple commands OR use Read + process in response
 
-#### Examples
+### Examples
 
 **❌ DON'T:**
 
 ```bash
 for file in *; do head -1 $file | jq '.type'; done
+```
 
-✅ DO:
+**✅ DO:**
+
+```bash
 # Read files in parallel with Read tool, or:
 head -1 file.jsonl | python3 -m json.tool | grep '"type"'
-
+```
 
 ## When to Use Each Debugging Approach
 
-| Issue Type         | Approach                          | Why                            |
-| ------------------ | --------------------------------- | ------------------------------ |
-| Type errors        | `npm run typecheck`               | Fast feedback, precise errors  |
-| Compile errors     | Check imports/exports             | Usually import path issues     |
-| Runtime crashes    | Breakpoint MCP debugger           | See exact state at crash       |
-| Wrong values       | Breakpoint MCP debugger           | Inspect variables at each step |
-| Complex flow       | Multiple breakpoints, scrach file | Trace data through system      |
-| Test failures      | Write simpler test first          | Isolate the problem            |
-| Integration issues | Database tests + breakpoints      | See real interactions          |
-| Quick validation   | bash script                       | Test hypotheses rapidly        |
+| Issue Type         | Approach                         | Why                            |
+| ------------------ | -------------------------------- | ------------------------------ |
+| Type errors        | `npm run typecheck`              | Fast feedback, precise errors  |
+| Compile errors     | Check imports/exports            | Usually import path issues     |
+| Runtime crashes    | Breakpoint MCP debugger          | See exact state at crash       |
+| Wrong values       | Breakpoint MCP debugger          | Inspect variables at each step |
+| Complex flow       | Multiple breakpoints, scratch file | Trace data through system      |
+| Test failures      | Write simpler test first         | Isolate the problem            |
+| Integration issues | Database tests + breakpoints     | See real interactions          |
+| Quick validation   | bash script                      | Test hypotheses rapidly        |
 
 Remember: **Prefer breakpoint debugging over console.log**. It's faster, clearer, and doesn't pollute your code.
-```
