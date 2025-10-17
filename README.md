@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/watch-claude-think.svg)](https://nodejs.org)
 
-**watch-claude-think** is an interactive CLI - like Claude Code - that monitors your Claude Code sessions and displays both `claude`'s internal reasoning process and user messages in real-time. Watch as Claude Code thinks through problems, plans solutions, and makes decisions.
+`watch-claude-think` is an interactive CLI - like Claude Code - that monitors and displays Claude's internal reasoning across all of your sessions in a project
 
 <img width="1135" height="384" alt="Screenshot 2025-10-10 at 3 51 49 PM" src="https://github.com/user-attachments/assets/530ea39f-45db-4756-b5e2-b894d0323a63" />
 
