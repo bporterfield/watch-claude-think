@@ -36,7 +36,7 @@ Watching Claude Code think is fun and useful:
 - It's a great way to improve prompting - you'll see quickly when Claude has the context it needs cleary does not
 - Claude often thinkgs things that it does not output, and some of those things are quite useful to read
 
-Sometimes it's a riot:
+Also, sometimes it's a riot:
 
 > "4:02:16 PM Claude: I have lint errors. Let me fix them:
 >
