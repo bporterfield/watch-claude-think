@@ -11,6 +11,8 @@ An interactive CLI that monitors and displays Claude's internal reasoning across
 
 <img width="1135" height="384" alt="Screenshot 2025-10-10 at 3 51 49 PM" src="https://github.com/user-attachments/assets/530ea39f-45db-4756-b5e2-b894d0323a63" />
 
+`watch-claude-think` doesn't use tokens or make web requests - it just monitors your `~/.claude` folder and displays thinking updates.
+
 ## Quick Start
 
 Enable thinking mode in Claude Code (press `Tab`) and run:
@@ -29,12 +31,12 @@ Or with other package managers:
 
 Watching Claude Code think is fun and useful:
 
-* Catch silly assumptions and interject before Claude derails
-* Gain insight into problem-solving approaches, architecture choices, and dependencies
-* Learn to improve your prompting—you'll see when Claude has the context it needs
-* Read thoughts Claude doesn't output
+- Catch silly assumptions and interject before Claude spins its wheels on the wrong thing
+- Claude's thoughs can hint at alternative approaches, architecture choices, or dependencies
+- It's a great way to improve prompting - you'll see quickly when Claude has the context it needs cleary does not
+- Claude often thinkgs things that it does not output, and some of those things are quite useful to read
 
-Sometimes it's a riot:
+Also, sometimes it's a riot:
 
 > "4:02:16 PM Claude: I have lint errors. Let me fix them:
 >
