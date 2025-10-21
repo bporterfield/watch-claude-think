@@ -7,9 +7,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/watch-claude-think.svg)](https://nodejs.org)
 
-An interactive CLI that monitors and displays Claude's internal reasoning across all your sessions in a project.
+An interactive CLI that monitors and displays Claude's internal reasoning across all your `claude` sessions in a project/folder.
 
 <img width="1135" height="384" alt="Screenshot 2025-10-10 at 3 51 49 PM" src="https://github.com/user-attachments/assets/530ea39f-45db-4756-b5e2-b894d0323a63" />
+
 
 `watch-claude-think` doesn't use tokens or make web requests - it just monitors your `~/.claude` folder and displays thinking updates.
 
@@ -29,9 +30,9 @@ Or with other package managers:
 
 ## Why
 
-Watching Claude Code think is fun and useful:
+Watching Claude Code think is fun, and actually has been pretty useful:
 
-- Catch silly assumptions and interject before Claude spins its wheels on the wrong thing
+- It's an easy way to catch silly assumptions and interject before Claude spins its wheels on the wrong thing
 - Claude's thoughs can hint at alternative approaches, architecture choices, or dependencies
 - It's a great way to improve prompting - you'll see quickly when Claude has the context it needs cleary does not
 - Claude often thinkgs things that it does not output, and some of those things are quite useful to read
@@ -76,12 +77,12 @@ Run `npx watch-claude-think` (or `watch-claude-think` if installed globally).
 
 ### 3. Select What to Watch
 
-1. Pick your project (or worktree) from the list
+1. Pick your folder/proejct (or worktree) from the list
 2. Choose either:
    - **Watch All Sessions** - see all Claude activity in this project
    - **Watch Specific Session** - focus on one conversation
 
-Session names may not match Claude Code `/resume` names exactly. When in doubt, watch All Sessions.
+Session names may not match Claude Code `/resume` names exactly...when in doubt, watch All Sessions.
 
 ## ClaudeSmells
 
