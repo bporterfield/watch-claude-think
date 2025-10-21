@@ -7,6 +7,7 @@
  */
 
 import chalk from 'chalk';
+import stripAnsi from 'strip-ansi';
 import { getProjectColor } from './colors.js';
 import { CURSOR_WIDTH } from './constants.js';
 
@@ -83,12 +84,37 @@ export function renderFooterToString(options: FooterOptions): string {
   if (showBack) {
     // Build navigation line with thinking mode status
     // We need to apply dim selectively to keep the colors vibrant
-    let navLine = leftPadding + chalk.dim('ESC to go back | Ctrl+C to exit | Thinking mode: ');
+    let navLine = leftPadding + chalk.dim('ESC to go back | Ctrl+C to exit | thinking: ');
 
     if (alwaysThinkingEnabled) {
-      navLine += chalk.green('on');
+      navLine += chalk.green('on') + chalk.dim(' for new Claude instances');
     } else {
-      navLine += chalk.red('off') + chalk.dim(' (press Tab in claude code to turn on)');
+      navLine += chalk.red('off') + chalk.dim(' for new Claude instances (Tab in claude toggle)');
+    }
+
+    // Truncate if needed to prevent wrapping
+    const visibleLength = stripAnsi(navLine).length;
+    if (visibleLength > terminalWidth) {
+      // We need to truncate - rebuild the line to fit within terminal width
+      // Keep the essential parts and truncate the end gracefully
+      const baseText = leftPadding + chalk.dim('ESC to go back | Ctrl+C to exit | thinking: ');
+      const baseLength = stripAnsi(baseText).length;
+      const remainingSpace = terminalWidth - baseLength;
+
+      if (remainingSpace > 10) {
+        // Enough space for status - build shorter version
+        if (alwaysThinkingEnabled) {
+          navLine = baseText + chalk.green('on') + chalk.dim(' for new Claude...');
+        } else {
+          navLine = baseText + chalk.red('off') + chalk.dim(' for new Claude...');
+        }
+      } else if (remainingSpace > 3) {
+        // Very tight - just show on/off
+        navLine = baseText + (alwaysThinkingEnabled ? chalk.green('on') : chalk.red('off'));
+      } else {
+        // Terminal too narrow - skip thinking status entirely
+        navLine = leftPadding + chalk.dim('ESC | Ctrl+C to exit');
+      }
     }
 
     lines.push(navLine);
