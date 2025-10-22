@@ -377,6 +377,24 @@ export async function listProjects(claudeDir?: string): Promise<ProjectInfo[]> {
 }
 
 /**
+ * Get all session file paths in a project directory
+ * Used when watching all sessions to ensure we monitor all .jsonl files,
+ * even those that temporarily have no valid conversations
+ */
+export async function getAllSessionFilePaths(projectPath: string): Promise<string[]> {
+  try {
+    const entries = await fs.readdir(projectPath, { withFileTypes: true });
+    const sessionFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.jsonl'));
+    return sessionFiles.map((entry) => path.join(projectPath, entry.name));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+    throw error;
+  }
+}
+
+/**
  * Get list of conversations for a project, sorted by most recent
  * Returns one entry per conversation branch (leaf message)
  * A single session file can contain multiple conversation branches

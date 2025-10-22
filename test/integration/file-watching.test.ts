@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from "path";
-import { listProjects } from "../../src/lib/file-system.js";
+import { listProjects, getAllSessionFilePaths, listConversations } from "../../src/lib/file-system.js";
 import { SessionWatcher } from "../../src/lib/session-watcher.js";
 import { parseNewLines } from "../../src/lib/parser.js";
 import {
@@ -366,6 +366,50 @@ describe("file-watching integration", () => {
     // because the parent UUID doesn't match any watched file
     expect(newSessionDetected).toBe(true);
     expect(detectedPath).toBe(newSessionWithLeafPath);
+
+    await watcher.close();
+  });
+
+  it("should watch files with only sidechain messages and detect when real messages arrive", async () => {
+    const projectPath = await createTestProject(claudeDir, "sidechain-only");
+    const sidechainOnlyPath = path.join(projectPath, "warmup-session.jsonl");
+
+    // Create file with only sidechain messages
+    await copyFixture(FIXTURES.SIDECHAIN_ONLY, sidechainOnlyPath);
+
+    // Verify: listConversations returns 0 conversations (file has no valid convos)
+    const conversations = await listConversations(projectPath);
+    expect(conversations).toHaveLength(0);
+
+    // Setup watcher: Use ALL session files (not just those with conversations)
+    const allSessionPaths = await getAllSessionFilePaths(projectPath);
+    expect(allSessionPaths).toContain(sidechainOnlyPath); // File should be in list
+
+    let changeDetected = false;
+    const watcher = new SessionWatcher(projectPath, allSessionPaths, {
+      onChange: () => {
+        changeDetected = true;
+      },
+    });
+
+    await watcher.waitForReady();
+
+    // Append real (non-sidechain) message
+    const realMessage =
+      '{"type":"user","message":{"role":"user","content":"Real question"},"uuid":"real-msg-1","timestamp":"2025-01-15T10:00:10.000Z","sessionId":"warmup-session","parentUuid":"warmup-assistant-1","isSidechain":false,"userType":"default","cwd":"/Users/test/project","version":"1.0.0","gitBranch":"main"}';
+    await appendToFile(sidechainOnlyPath, realMessage);
+
+    // Verify: Change WAS detected (proving file is being watched)
+    await waitFor(() => changeDetected, TIMEOUTS.fileChange, 'sidechain file change detection');
+    expect(changeDetected).toBe(true);
+
+    // Verify: New message is parseable
+    const newMessages = await parseNewLines(sidechainOnlyPath);
+    expect(newMessages).toHaveLength(1);
+    expect(newMessages[0]).toMatchObject({
+      type: "user",
+      content: "Real question",
+    });
 
     await watcher.close();
   });

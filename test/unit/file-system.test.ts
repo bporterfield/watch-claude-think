@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import path from 'path';
 import fs from 'fs/promises';
-import { listProjects } from '../../src/lib/file-system.js';
+import { listProjects, getAllSessionFilePaths, listConversations } from '../../src/lib/file-system.js';
 import {
   createTempClaudeDir,
   cleanupTempDir,
@@ -125,6 +125,50 @@ describe('file-system', () => {
 
       expect(projects[0]?.path).toContain('projects');
       expect(projects[0]?.path).toContain('test-project');
+    });
+  });
+
+  describe('getAllSessionFilePaths', () => {
+    it('should return all .jsonl files regardless of conversation state', async () => {
+      const projectPath = await createTestProject(claudeDir, 'all-files-test');
+
+      // Create both valid and sidechain-only files
+      await copyFixture(FIXTURES.SIMPLE, path.join(projectPath, 'valid.jsonl'));
+      await copyFixture(FIXTURES.SIDECHAIN_ONLY, path.join(projectPath, 'sidechain.jsonl'));
+
+      const allPaths = await getAllSessionFilePaths(projectPath);
+      const conversations = await listConversations(projectPath);
+
+      // getAllSessionFilePaths returns both files
+      expect(allPaths).toHaveLength(2);
+      expect(allPaths.some((p) => p.endsWith('valid.jsonl'))).toBe(true);
+      expect(allPaths.some((p) => p.endsWith('sidechain.jsonl'))).toBe(true);
+
+      // But listConversations only finds 1 (filters out sidechain-only)
+      expect(conversations).toHaveLength(1);
+      expect(conversations[0]?.sessionPath).toContain('valid.jsonl');
+    });
+
+    it('should return empty array when project directory has no session files', async () => {
+      const projectPath = await createTestProject(claudeDir, 'empty-project');
+
+      const allPaths = await getAllSessionFilePaths(projectPath);
+
+      expect(allPaths).toEqual([]);
+    });
+
+    it('should return full paths to all session files', async () => {
+      const projectPath = await createTestProject(claudeDir, 'paths-test');
+      await copyFixture(FIXTURES.SIMPLE, path.join(projectPath, 'session1.jsonl'));
+      await copyFixture(FIXTURES.MULTI_THINKING, path.join(projectPath, 'session2.jsonl'));
+
+      const allPaths = await getAllSessionFilePaths(projectPath);
+
+      expect(allPaths).toHaveLength(2);
+      allPaths.forEach((filePath) => {
+        expect(filePath).toContain(projectPath);
+        expect(filePath.endsWith('.jsonl')).toBe(true);
+      });
     });
   });
 });

@@ -24,6 +24,7 @@ export const FIXTURES = {
   SYSTEM_MESSAGES: "system-messages.jsonl",
   EMPTY: "empty-session.jsonl",
   ORPHANED_SUMMARY: "orphaned-summary.jsonl",
+  SIDECHAIN_ONLY: "sidechain-only.jsonl",
 } as const;
 
 /**
