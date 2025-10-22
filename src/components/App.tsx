@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import {
   listProjects,
   listConversations,
+  getAllSessionFilePaths,
   type ProjectInfo,
   type ConversationInfo,
 } from "../lib/file-system.js";
@@ -135,18 +136,20 @@ export const App: React.FC = () => {
     process.stdout.write('\x1b[3J\x1b[H\x1b[2J');
 
     if (conversation === "all") {
-      // Get all unique session files from all conversations
-      const uniqueSessionPaths = new Set(state.conversations.map((c) => c.sessionPath));
+      // Get ALL session files in the project directory
+      // This ensures we watch files even if they temporarily have no valid conversations
+      // (e.g., files with only sidechain/warmup messages that later get real messages)
+      const allSessionPaths = await getAllSessionFilePaths(project.path);
       setState({
         stage: "watching",
-        sessionFiles: Array.from(uniqueSessionPaths).map((sessionPath) => {
-          // Find a conversation for this session to get the name
-          const conv = state.conversations.find((c) => c.sessionPath === sessionPath)!;
+        sessionFiles: allSessionPaths.map((sessionPath) => {
+          // Find a conversation for this session to get the name, or use placeholder
+          const conv = state.conversations.find((c) => c.sessionPath === sessionPath);
           return {
             projectName: project.name,
             projectPath: project.path,
             sessionPath: sessionPath,
-            sessionName: conv.name,
+            sessionName: conv?.name || 'Session',
           };
         }),
       });
