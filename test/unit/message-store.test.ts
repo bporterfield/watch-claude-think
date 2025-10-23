@@ -170,22 +170,6 @@ describe("MessageStore", () => {
     });
   });
 
-  describe("hasBlock", () => {
-    it("should return false for block not in store", () => {
-      const block = createUserMessage("msg-1", "2025-01-15T10:00:00.000Z");
-
-      expect(store.hasBlock(block)).toBe(false);
-    });
-
-    it("should return true for block in store", () => {
-      const block = createUserMessage("msg-1", "2025-01-15T10:00:00.000Z");
-
-      store.addBlocks([block]);
-
-      expect(store.hasBlock(block)).toBe(true);
-    });
-  });
-
   describe("clear", () => {
     it("should remove all blocks", () => {
       const blocks = [

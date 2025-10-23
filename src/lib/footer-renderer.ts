@@ -46,10 +46,6 @@ export function renderFooterToString(options: FooterOptions): string {
   const lines: string[] = [];
   const leftPadding = ' '.repeat(CURSOR_WIDTH);
 
-  // Debug: log terminal width being used
-  // Uncomment to debug resize issues:
-  // console.error(`[FooterRenderer] Rendering with terminalWidth=${terminalWidth}`);
-
   // Skip footer if not showing single session or all sessions for a project
   if (!isSingleSession && !isWatchingAllForProject) {
     if (showBack) {
