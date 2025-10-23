@@ -1,4 +1,4 @@
-import type { MessageBlock, ThinkingBlock, UserMessage } from '../lib/parser.js';
+import type { ThinkingBlock, UserMessage } from '../lib/parser.js';
 import { logger } from '../lib/logger.js';
 import { getBlockKey } from '../lib/message-utils.js';
 
@@ -152,13 +152,5 @@ export class MessageStore {
    */
   getBlockCount(): number {
     return this.blocks.length;
-  }
-
-  /**
-   * Check if a block exists by key
-   */
-  hasBlock(block: MessageBlock): boolean {
-    const key = getBlockKey(block);
-    return this.blockKeys.has(key);
   }
 }

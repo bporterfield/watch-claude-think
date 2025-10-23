@@ -2,38 +2,6 @@ import fs from "fs/promises";
 import { TIMEOUTS, logTimeoutDebug } from "./timeouts.js";
 
 /**
- * Wait for a file to be modified
- * Useful for testing file watching functionality
- */
-export async function waitForFileChange(
-  filePath: string,
-  timeoutMs: number = TIMEOUTS.fileChange
-): Promise<void> {
-  const startTime = Date.now();
-  const initialStat = await fs.stat(filePath);
-  const initialMtime = initialStat.mtime.getTime();
-
-  return new Promise((resolve, reject) => {
-    const interval = setInterval(async () => {
-      try {
-        const stat = await fs.stat(filePath);
-        if (stat.mtime.getTime() > initialMtime) {
-          clearInterval(interval);
-          resolve();
-        } else if (Date.now() - startTime > timeoutMs) {
-          clearInterval(interval);
-          logTimeoutDebug(`waitForFileChange(${filePath})`, Date.now() - startTime, timeoutMs);
-          reject(new Error(`File did not change within ${timeoutMs}ms`));
-        }
-      } catch (error) {
-        clearInterval(interval);
-        reject(error);
-      }
-    }, 100);
-  });
-}
-
-/**
  * Append content to a file (simulating new messages being added)
  */
 export async function appendToFile(

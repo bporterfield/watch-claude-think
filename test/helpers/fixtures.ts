@@ -45,18 +45,3 @@ export async function readFixture(fixtureName: string): Promise<string> {
   const sourcePath = path.join(FIXTURES_DIR, fixtureName);
   return fs.readFile(sourcePath, "utf-8");
 }
-
-/**
- * Copy multiple fixtures to a project directory
- */
-export async function copyFixturesToProject(
-  projectPath: string,
-  fixtures: Array<{ name: string; sessionId: string }>
-): Promise<void> {
-  await Promise.all(
-    fixtures.map(({ name, sessionId }) => {
-      const destPath = path.join(projectPath, `${sessionId}.jsonl`);
-      return copyFixture(name, destPath);
-    })
-  );
-}
