@@ -51,26 +51,37 @@ export class SessionManager {
   private sessionFiles: SessionFile[];
   private sessionFilesMap: Map<
     string,
-    { projectName: string; sessionName: string; summaryIdInUse: string | null }
+    {
+      projectName: string;
+      projectPath: string;
+      sessionName: string;
+      summaryIdInUse: string | null;
+    }
   >;
   private watcher: SessionWatcher | null = null;
   private newMessagesListeners = new Set<NewMessagesCallback>();
   private errorListeners = new Set<ErrorCallback>();
-  private projectName: string; // The project selected by the user
-  private projectPath: string; // The project directory path
+  private projectPaths: string[]; // All project directory paths being watched
+  private projectPathToNameMap: Map<string, string>; // Map project path to project name
 
-  constructor(sessionFiles: SessionFile[], projectName: string, projectPath: string) {
+  constructor(sessionFiles: SessionFile[]) {
     this.sessionFiles = sessionFiles;
     this.sessionFilesMap = new Map(
       sessionFiles.map((s) => [
         s.sessionPath,
-        { projectName: s.projectName, sessionName: s.sessionName, summaryIdInUse: null },
-      ]),
+        {
+          projectName: s.projectName,
+          projectPath: s.projectPath,
+          sessionName: s.sessionName,
+          summaryIdInUse: null,
+        },
+      ])
     );
 
-    // Store the project name and path that the user selected
-    this.projectName = projectName;
-    this.projectPath = projectPath;
+    // Extract unique project paths and build name mapping
+    const projectPathSet = new Set(sessionFiles.map((s) => s.projectPath));
+    this.projectPaths = Array.from(projectPathSet);
+    this.projectPathToNameMap = new Map(sessionFiles.map((s) => [s.projectPath, s.projectName]));
   }
 
   /**
@@ -145,22 +156,24 @@ export class SessionManager {
     const isSingleSession = filePaths.length === 1;
 
     logger.info('[SessionManager] Starting file watching', {
-      projectPath: this.projectPath,
+      projectPaths: this.projectPaths,
+      projectCount: this.projectPaths.length,
       mode: isSingleSession ? 'single-session' : 'all-sessions',
       fileCount: filePaths.length,
     });
 
     // Always use the unified SessionWatcher - it uses directory watching for both modes
     // The difference is just which files we filter for and whether we enable onNewSession
-    this.watcher = new SessionWatcher(this.projectPath, filePaths, {
-      onChange: async (changedPath) => {
-        await this.handleFileChange(changedPath);
+    // Now supports multiple project directories for worktree watching
+    this.watcher = new SessionWatcher(this.projectPaths, filePaths, {
+      onChange: async (changedPath, projectPath) => {
+        await this.handleFileChange(changedPath, projectPath);
       },
       // Only enable new session detection when watching all sessions
       onNewSession: isSingleSession
         ? undefined
-        : async (newFilePath) => {
-            await this.handleNewSession(newFilePath);
+        : async (newFilePath, projectPath) => {
+            await this.handleNewSession(newFilePath, projectPath);
           },
     });
   }
@@ -169,11 +182,16 @@ export class SessionManager {
    * Register a new session (extract info, add to map, add to watcher)
    * Shared logic used by both handleFileChange and handleNewSession
    *
-   * Uses the project name that was selected by the user (stored in this.projectName)
+   * @param filePath Path to the session file
+   * @param projectPath Path to the project directory containing this session
    */
-  private async registerNewSession(filePath: string): Promise<
+  private async registerNewSession(
+    filePath: string,
+    projectPath: string
+  ): Promise<
     | {
         projectName: string;
+        projectPath: string;
         sessionName: string;
         summaryIdInUse: string | null;
       }
@@ -184,16 +202,19 @@ export class SessionManager {
 
       logger.debug('[SessionManager] Extracted session info', {
         filePath,
+        projectPath,
         sessionName: sessionInfo.sessionName,
         cwd: sessionInfo.cwd,
         leafUuid: sessionInfo.leafUuid,
         summaryIdInUse: sessionInfo.summaryIdInUse,
       });
 
-      // Use the project name that was selected by the user
-      // All new sessions discovered belong to this project
+      // Get the project name for this project path
+      const projectName = this.projectPathToNameMap.get(projectPath) || 'Unknown Project';
+
       const newSession = {
-        projectName: this.projectName,
+        projectName,
+        projectPath,
         sessionName: sessionInfo.sessionName,
         summaryIdInUse: sessionInfo.summaryIdInUse,
       };
@@ -203,15 +224,17 @@ export class SessionManager {
       if (this.watcher) {
         logger.debug('[SessionManager] Adding file to watcher', {
           filePath,
+          projectPath,
           sessionName: sessionInfo.sessionName,
         });
-        this.watcher.addFile(filePath);
+        this.watcher.addFile(filePath, projectPath);
       }
 
       logger.debug('[SessionManager] Registered new session', {
         filePath,
+        projectPath,
         sessionName: sessionInfo.sessionName,
-        projectName: this.projectName,
+        projectName,
         summaryIdInUse: sessionInfo.summaryIdInUse,
         totalSessions: this.sessionFilesMap.size,
       });
@@ -220,6 +243,7 @@ export class SessionManager {
     } catch (error) {
       logger.warn('Could not register new session', {
         filePath,
+        projectPath,
         error,
       });
 
@@ -238,7 +262,7 @@ export class SessionManager {
   /**
    * Handle file change event
    */
-  private async handleFileChange(changedPath: string): Promise<void> {
+  private async handleFileChange(changedPath: string, projectPath: string): Promise<void> {
     let sessionInfo = this.sessionFilesMap.get(changedPath);
 
     // If we don't have session info yet, the file might be brand new
@@ -246,9 +270,10 @@ export class SessionManager {
     if (!sessionInfo) {
       logger.info('File change detected for unknown session, registering', {
         changedPath,
+        projectPath,
       });
 
-      sessionInfo = await this.registerNewSession(changedPath);
+      sessionInfo = await this.registerNewSession(changedPath, projectPath);
       if (!sessionInfo) {
         return;
       }
@@ -341,17 +366,18 @@ export class SessionManager {
   /**
    * Handle new session event (when watching all sessions)
    */
-  private async handleNewSession(newFilePath: string): Promise<void> {
-    logger.debug('[SessionManager] handleNewSession called', { newFilePath });
+  private async handleNewSession(newFilePath: string, projectPath: string): Promise<void> {
+    logger.debug('[SessionManager] handleNewSession called', { newFilePath, projectPath });
 
     // Register the new session (extract info, add to map, add to watcher)
-    const sessionInfo = await this.registerNewSession(newFilePath);
+    const sessionInfo = await this.registerNewSession(newFilePath, projectPath);
     if (!sessionInfo) {
       return;
     }
 
     logger.info('[SessionManager] New session detected', {
       filePath: newFilePath,
+      projectPath,
       projectName: sessionInfo.projectName,
       sessionName: sessionInfo.sessionName,
     });

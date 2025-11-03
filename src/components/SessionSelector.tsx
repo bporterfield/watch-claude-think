@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
 import chalk from 'chalk';
-import type { ConversationInfo } from '../lib/file-system.js';
+import type { ConversationInfo, ProjectInfo } from '../lib/file-system.js';
 import { getProjectColor } from '../lib/colors.js';
 import { NonWrappingSelectInput } from './NonWrappingSelectInput.js';
 import { useSelectInputLimit } from '../hooks/useSelectInputLimit.js';
@@ -9,8 +9,8 @@ import { useClaudeSettings } from '../hooks/useClaudeSettings.js';
 
 interface SessionSelectorProps {
   sessions: ConversationInfo[];
-  projectName: string;
-  onSelect: (session: ConversationInfo | 'all') => void;
+  project: ProjectInfo;
+  onSelect: (session: ConversationInfo | 'all' | 'all-worktrees') => void;
   onBack?: () => void;
 }
 
@@ -49,11 +49,11 @@ const SessionItem: React.FC<SessionItemProps> = ({ isSelected = false, label }) 
 
 export const SessionSelector: React.FC<SessionSelectorProps> = ({
   sessions,
-  projectName,
+  project,
   onSelect,
   onBack,
 }) => {
-  const projectColor = getProjectColor(projectName);
+  const projectColor = getProjectColor(project.name);
 
   // Calculate dynamic list limit based on terminal height
   // SessionItems take 3 rows each: name (1) + metadata (1) + marginBottom (1)
@@ -82,23 +82,44 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
     return date.toLocaleDateString();
   }, []);
 
-  const items = React.useMemo(
-    () => [
-      {
-        label: 'Watch all conversations',
-        value: 'all' as const,
-      },
+  const items = React.useMemo(() => {
+    const options: Array<{ label: string; value: string }> = [];
+
+    // Add "Watch all sessions (including worktrees)" option if worktrees exist
+    const worktreeCount = project.worktreeInfo?.relatedWorktrees?.length ?? 0;
+    if (worktreeCount > 0) {
+      const worktreeLabel =
+        worktreeCount === 1
+          ? 'Watch all sessions (including 1 worktree)'
+          : `Watch all sessions (including ${worktreeCount} worktrees)`;
+      options.push({
+        label: worktreeLabel,
+        value: 'all-worktrees' as const,
+      });
+    }
+
+    // Add "Watch all conversations" option
+    options.push({
+      label: 'Watch all conversations',
+      value: 'all' as const,
+    });
+
+    // Add individual sessions
+    options.push(
       ...sessions.map((session) => ({
         label: `${session.name}|||${formatTimeAgo(session.mtime)}|||${session.gitBranch || ''}`,
         value: session.id,
-      })),
-    ],
-    [sessions, formatTimeAgo],
-  );
+      }))
+    );
+
+    return options;
+  }, [sessions, formatTimeAgo, project.worktreeInfo]);
 
   const handleSelect = (item: { label: string; value: string }) => {
     if (item.value === 'all') {
       onSelect('all');
+    } else if (item.value === 'all-worktrees') {
+      onSelect('all-worktrees');
     } else {
       const session = sessions.find((s) => s.id === item.value);
       if (session) {
@@ -111,7 +132,7 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
     <Box flexDirection="column">
       <Box marginBottom={1}>
         <Text bold>
-          Select a conversation for {projectColor(projectName)}
+          Select a conversation for {projectColor(project.name)}
           {onBack && <Text dimColor> (ESC to go back)</Text>}:
         </Text>
       </Box>

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Box, Text } from "ink";
+import path from "path";
 import {
   listProjects,
   listConversations,
   getAllSessionFilePaths,
+  getProjectPathForWorktree,
   type ProjectInfo,
   type ConversationInfo,
 } from "../lib/file-system.js";
@@ -117,7 +119,7 @@ export const App: React.FC = () => {
 
   const handleConversationSelect = async (
     project: ProjectInfo,
-    conversation: ConversationInfo | "all",
+    conversation: ConversationInfo | "all" | "all-worktrees",
   ) => {
     if (state.stage !== "select-conversation") return;
 
@@ -135,7 +137,87 @@ export const App: React.FC = () => {
     // \x1b[3J clears scrollback, \x1b[H moves cursor to home, \x1b[2J clears screen
     process.stdout.write('\x1b[3J\x1b[H\x1b[2J');
 
-    if (conversation === "all") {
+    if (conversation === "all-worktrees") {
+      // Watch all sessions across all worktrees
+      const worktrees = project.worktreeInfo?.relatedWorktrees || [];
+
+      logger.info('[App] Collecting session files from all worktrees', {
+        mainProject: project.name,
+        worktreeCount: worktrees.length,
+      });
+
+      // Collect session files from all worktrees
+      const allSessionFiles: Array<{
+        projectName: string;
+        projectPath: string;
+        sessionPath: string;
+        sessionName: string;
+      }> = [];
+
+      // Get sessions from current project
+      const currentProjectSessions = await getAllSessionFilePaths(project.path);
+      const currentConversations = state.conversations;
+
+      for (const sessionPath of currentProjectSessions) {
+        const conv = currentConversations.find((c) => c.sessionPath === sessionPath);
+        allSessionFiles.push({
+          projectName: project.name,
+          projectPath: project.path,
+          sessionPath,
+          sessionName: conv?.name || 'Session',
+        });
+      }
+
+      // Get sessions from each worktree
+      for (const worktree of worktrees) {
+        // Skip if this is the current project (already added above)
+        if (project.projectDir && worktree.path === project.projectDir) {
+          continue;
+        }
+
+        // Map worktree directory to Claude project directory
+        const worktreeProjectPath = await getProjectPathForWorktree(worktree.path);
+        if (!worktreeProjectPath) {
+          logger.debug('[App] No Claude project found for worktree', {
+            worktreePath: worktree.path,
+            worktreeBranch: worktree.branch,
+          });
+          continue;
+        }
+
+        logger.debug('[App] Found Claude project for worktree', {
+          worktreePath: worktree.path,
+          worktreeBranch: worktree.branch,
+          projectPath: worktreeProjectPath,
+        });
+
+        // Get all session files from this worktree's project
+        const worktreeSessionPaths = await getAllSessionFilePaths(worktreeProjectPath);
+
+        // Get conversations to find session names
+        const worktreeConversations = await listConversations(worktreeProjectPath);
+
+        for (const sessionPath of worktreeSessionPaths) {
+          const conv = worktreeConversations.find((c) => c.sessionPath === sessionPath);
+          allSessionFiles.push({
+            projectName: worktree.branch || path.basename(worktree.path),
+            projectPath: worktreeProjectPath,
+            sessionPath,
+            sessionName: conv?.name || 'Session',
+          });
+        }
+      }
+
+      logger.info('[App] Watching sessions from all worktrees', {
+        totalSessions: allSessionFiles.length,
+        projectCount: new Set(allSessionFiles.map((s) => s.projectPath)).size,
+      });
+
+      setState({
+        stage: "watching",
+        sessionFiles: allSessionFiles,
+      });
+    } else if (conversation === "all") {
       // Get ALL session files in the project directory
       // This ensures we watch files even if they temporarily have no valid conversations
       // (e.g., files with only sidechain/warmup messages that later get real messages)
@@ -265,7 +347,7 @@ export const App: React.FC = () => {
       >
         <SessionSelector
           sessions={state.conversations}
-          projectName={state.project.name}
+          project={state.project}
           onSelect={(conversation) => handleConversationSelect(state.project, conversation)}
           onBack={handleBackToProjectSelect}
         />

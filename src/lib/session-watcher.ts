@@ -14,8 +14,8 @@ import {
  * Callbacks for session watcher events
  */
 export interface SessionWatcherCallbacks {
-  onChange: (filePath: string) => void;
-  onNewSession?: (newFilePath: string) => void;
+  onChange: (filePath: string, projectPath: string) => void;
+  onNewSession?: (newFilePath: string, projectPath: string) => void;
 }
 
 /**
@@ -32,34 +32,49 @@ export interface SessionWatcherCallbacks {
  */
 export class SessionWatcher {
   private watcher: FSWatcher;
-  private projectPath: string;
+  private projectPaths: string[];
   private watchedFiles: Set<string> = new Set();
+  private fileToProjectMap: Map<string, string> = new Map();
   private callbacks: SessionWatcherCallbacks;
   private queue: PQueue;
   private readyPromise: Promise<void>;
 
-  constructor(projectPath: string, initialFiles: string[], callbacks: SessionWatcherCallbacks) {
-    this.projectPath = projectPath;
+  constructor(
+    projectPath: string | string[],
+    initialFiles: string[],
+    callbacks: SessionWatcherCallbacks
+  ) {
+    // Normalize to array for internal use
+    this.projectPaths = Array.isArray(projectPath) ? projectPath : [projectPath];
     this.callbacks = callbacks;
 
     logger.info('[SessionWatcher] Creating watcher', {
-      projectPath,
+      projectPaths: this.projectPaths,
+      projectCount: this.projectPaths.length,
       fileCount: initialFiles.length,
       isSingleSession: initialFiles.length === 1,
     });
 
-    // Track files we care about
-    initialFiles.forEach((file) => this.watchedFiles.add(file));
+    // Track files we care about and map them to their project directories
+    initialFiles.forEach((file) => {
+      this.watchedFiles.add(file);
+      // Find which project this file belongs to
+      const projectPath = this.projectPaths.find((p) => file.startsWith(p));
+      if (projectPath) {
+        this.fileToProjectMap.set(file, projectPath);
+      }
+    });
 
     // Create async queue to serialize file operations and prevent race conditions
     this.queue = new PQueue({ concurrency: FILE_OPERATION_QUEUE_CONCURRENCY });
 
-    // Always watch the project directory
+    // Watch all project directories
+    // Chokidar supports watching multiple paths efficiently
     // This handles both file changes and new file detection (compaction/new sessions)
-    this.watcher = chokidar.watch(projectPath, {
+    this.watcher = chokidar.watch(this.projectPaths, {
       persistent: true,
       ignoreInitial: true,
-      depth: 0, // Only watch files directly in this directory
+      depth: 0, // Only watch files directly in each directory
       awaitWriteFinish: {
         stabilityThreshold: WATCHER_STABILITY_THRESHOLD,
         pollInterval: WATCHER_POLL_INTERVAL,
@@ -81,14 +96,24 @@ export class SessionWatcher {
         return;
       }
 
-      logger.debug('[SessionWatcher] File changed', { changedPath });
+      // Get the project path for this file
+      const projectPath = this.fileToProjectMap.get(changedPath);
+      if (!projectPath) {
+        logger.warn('[SessionWatcher] File changed but no project mapping found', {
+          changedPath,
+        });
+        return;
+      }
+
+      logger.debug('[SessionWatcher] File changed', { changedPath, projectPath });
 
       void this.queue.add(async () => {
         try {
-          callbacks.onChange(changedPath);
+          callbacks.onChange(changedPath, projectPath);
         } catch (error) {
           logger.error('Error handling file change in queue', {
             filePath: changedPath,
+            projectPath,
             error,
           });
         }
@@ -107,14 +132,25 @@ export class SessionWatcher {
         return;
       }
 
-      logger.debug('[SessionWatcher] New file detected', { newFilePath });
+      // Find which project this file belongs to
+      const projectPath = this.projectPaths.find((p) => newFilePath.startsWith(p));
+      if (!projectPath) {
+        logger.warn('[SessionWatcher] New file detected but not in any watched project', {
+          newFilePath,
+          projectPaths: this.projectPaths,
+        });
+        return;
+      }
+
+      logger.debug('[SessionWatcher] New file detected', { newFilePath, projectPath });
 
       void this.queue.add(async () => {
         try {
-          await this.handleNewFile(newFilePath);
+          await this.handleNewFile(newFilePath, projectPath);
         } catch (error) {
           logger.error('Error handling new file in queue', {
             filePath: newFilePath,
+            projectPath,
             error,
           });
         }
@@ -129,8 +165,8 @@ export class SessionWatcher {
    * 1. User running `claude` command (may auto-resume with summary)
    * 2. User typing `/new` or `/resume` command
    */
-  private async handleNewFile(newFilePath: string): Promise<void> {
-    logger.debug('[SessionWatcher] Processing new file', { newFilePath });
+  private async handleNewFile(newFilePath: string, projectPath: string): Promise<void> {
+    logger.debug('[SessionWatcher] Processing new file', { newFilePath, projectPath });
 
     // If we have a new session callback, call it
     // All new .jsonl files are new sessions (compaction doesn't create files)
@@ -140,21 +176,24 @@ export class SessionWatcher {
 
         logger.debug('[SessionWatcher] Detected new session', {
           newFilePath,
+          projectPath,
           sessionName: sessionInfo.sessionName,
           hasLeafUuid: sessionInfo.leafUuid !== null,
         });
 
-        this.callbacks.onNewSession(newFilePath);
+        this.callbacks.onNewSession(newFilePath, projectPath);
       } catch (error) {
         // Ignore errors reading the new file - it might not be fully written yet
         logger.debug('[SessionWatcher] Failed to read new file (may still be writing)', {
           filePath: newFilePath,
+          projectPath,
           error: error instanceof Error ? error.message : String(error),
         });
       }
     } else {
       logger.debug('[SessionWatcher] No new session callback registered', {
         newFilePath,
+        projectPath,
       });
     }
   }
@@ -163,9 +202,16 @@ export class SessionWatcher {
    * Add a new file to the watch list
    * Used when SessionManager registers a new session
    */
-  addFile(filePath: string): void {
-    logger.debug('[SessionWatcher] Adding file to watch list', { filePath });
+  addFile(filePath: string, projectPath?: string): void {
+    logger.debug('[SessionWatcher] Adding file to watch list', { filePath, projectPath });
     this.watchedFiles.add(filePath);
+
+    // If project path provided, use it; otherwise, find which project this file belongs to
+    const resolvedProjectPath =
+      projectPath || this.projectPaths.find((p) => filePath.startsWith(p));
+    if (resolvedProjectPath) {
+      this.fileToProjectMap.set(filePath, resolvedProjectPath);
+    }
   }
 
   /**
@@ -174,6 +220,7 @@ export class SessionWatcher {
   removeFile(filePath: string): void {
     logger.debug('[SessionWatcher] Removing file from watch list', { filePath });
     this.watchedFiles.delete(filePath);
+    this.fileToProjectMap.delete(filePath);
   }
 
   /**
@@ -223,8 +270,9 @@ export class SessionWatcher {
       logger.error('Error waiting for queue to drain', error);
     }
 
-    // Clear tracked files
+    // Clear tracked files and mappings
     this.watchedFiles.clear();
+    this.fileToProjectMap.clear();
 
     const memAfter = process.memoryUsage();
     logger.info('[SessionWatcher] Closed', {

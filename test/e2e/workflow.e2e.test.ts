@@ -50,7 +50,7 @@ describe('end-to-end workflow', () => {
 
     // Step 3: User selects session, app starts watching and parsing
     const watcher = new SessionWatcher(project, [sessionPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         // File changed
       },
     });
@@ -97,7 +97,7 @@ describe('end-to-end workflow', () => {
     const changedFiles = new Set<string>();
 
     const watcher = new SessionWatcher(projectPath, sessionPaths, {
-      onChange: (filePath) => {
+      onChange: (filePath, _projectPath) => {
         changedFiles.add(filePath);
       },
     });
@@ -197,10 +197,10 @@ describe('end-to-end workflow', () => {
     let detectedNewPath = '';
 
     const watcher = new SessionWatcher(projectPath, [originalPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         // Change detected
       },
-      onNewSession: (newPath) => {
+      onNewSession: (newPath, _projectPath) => {
         newSessionDetected = true;
         detectedNewPath = newPath;
       },

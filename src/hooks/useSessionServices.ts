@@ -46,18 +46,13 @@ export function useSessionServices({
       heapUsedMB: Math.round(memUsage.heapUsed / BYTES_TO_MB),
     });
 
-    const firstSession = sessionFiles[0];
-    if (!firstSession) {
+    if (sessionFiles.length === 0) {
       throw new Error('SessionManager requires at least one session file');
     }
 
     // Create services
     const store = new MessageStore();
-    const manager = new SessionManager(
-      sessionFiles,
-      firstSession.projectName,
-      firstSession.projectPath,
-    );
+    const manager = new SessionManager(sessionFiles);
 
     // Create custom logger
     const customLogger = new CustomRenderLogger(

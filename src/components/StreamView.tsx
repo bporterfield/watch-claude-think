@@ -36,6 +36,11 @@ export const StreamView: React.FC<StreamViewProps> = ({ sessionFiles, onBack }) 
     sessionFiles.length > 0 &&
     firstProject &&
     sessionFiles.every((s) => s.projectName === firstProject.projectName);
+
+  // Detect if we're watching worktrees (multiple different projects)
+  const uniqueProjectPaths = new Set(sessionFiles.map((s) => s.projectPath));
+  const isWatchingWorktrees = !isSingleSession && uniqueProjectPaths.size > 1;
+
   const projectName = firstProject?.projectName;
 
   // Store project color for color assignment
@@ -91,13 +96,14 @@ export const StreamView: React.FC<StreamViewProps> = ({ sessionFiles, onBack }) 
     return renderFooterToString({
       isSingleSession,
       isWatchingAllForProject: isWatchingAllForProject ?? false,
+      isWatchingWorktrees,
       projectName,
       sessionName: singleSessionInfo?.sessionName,
       showBack: !!onBack,
       terminalWidth: process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH,
       alwaysThinkingEnabled: alwaysThinkingEnabled ?? false,
     });
-  }, [isSingleSession, isWatchingAllForProject, projectName, singleSessionInfo, onBack, alwaysThinkingEnabled]);
+  }, [isSingleSession, isWatchingAllForProject, isWatchingWorktrees, projectName, singleSessionInfo, onBack, alwaysThinkingEnabled]);
 
   // Memoize initial render frame to avoid recreating on every render
   const initialRenderFrame = useMemo(

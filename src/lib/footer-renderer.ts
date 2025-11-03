@@ -14,6 +14,7 @@ import { CURSOR_WIDTH } from './constants.js';
 export interface FooterOptions {
   isSingleSession: boolean;
   isWatchingAllForProject: boolean;
+  isWatchingWorktrees: boolean;
   projectName?: string;
   sessionName?: string;
   showBack: boolean;
@@ -36,6 +37,7 @@ export function renderFooterToString(options: FooterOptions): string {
   const {
     isSingleSession,
     isWatchingAllForProject,
+    isWatchingWorktrees,
     projectName,
     sessionName,
     showBack,
@@ -46,15 +48,20 @@ export function renderFooterToString(options: FooterOptions): string {
   const lines: string[] = [];
   const leftPadding = ' '.repeat(CURSOR_WIDTH);
 
-  // Skip footer if not showing single session or all sessions for a project
-  if (!isSingleSession && !isWatchingAllForProject) {
+  // Debug: log terminal width being used
+  // Uncomment to debug resize issues:
+  // console.error(`[FooterRenderer] Rendering with terminalWidth=${terminalWidth}`);
+
+  // Skip footer if not showing single session, all sessions for a project, or worktrees
+  if (!isSingleSession && !isWatchingAllForProject && !isWatchingWorktrees) {
     if (showBack) {
       return leftPadding + chalk.dim('ESC to go back | Ctrl+C to exit');
     }
     return '';
   }
 
-  if (!projectName) return '';
+  // For worktrees, we don't need a project name
+  if (!isWatchingWorktrees && !projectName) return '';
 
   // Add blank line (margin top)
   lines.push('');
@@ -65,11 +72,15 @@ export function renderFooterToString(options: FooterOptions): string {
 
   // Project/Session info line (bold) - WITH PADDING
   let infoLine = '';
-  if (isSingleSession && sessionName) {
+  if (isSingleSession && sessionName && projectName) {
     // Single session: "ProjectName / session-name"
     infoLine =
       leftPadding + chalk.bold(getProjectColor(projectName)(projectName) + ' / ' + sessionName);
-  } else {
+  } else if (isWatchingWorktrees && projectName) {
+    // Watching worktrees: "ProjectName / All Sessions (including worktrees)"
+    infoLine =
+      leftPadding + chalk.bold(getProjectColor(projectName)(projectName) + ' / All Sessions (including worktrees)');
+  } else if (projectName) {
     // All sessions: "ProjectName / All Sessions"
     infoLine =
       leftPadding + chalk.bold(getProjectColor(projectName)(projectName) + ' / All Sessions');

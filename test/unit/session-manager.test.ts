@@ -93,13 +93,13 @@ describe("SessionManager", () => {
 
   describe("constructor", () => {
     it("should create a session manager with session files", () => {
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
 
       expect(manager).toBeDefined();
     });
 
     it("should handle empty session files array", () => {
-      manager = new SessionManager([], "test-project", "/path/to/test-project");
+      manager = new SessionManager([]);
 
       expect(manager).toBeDefined();
     });
@@ -110,7 +110,7 @@ describe("SessionManager", () => {
       vi.mocked(parseFileTail).mockResolvedValueOnce([mockUserMessage]);
       vi.mocked(parseFileTail).mockResolvedValueOnce([mockThinkingBlock]);
 
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
       await manager.initialize();
 
       expect(parseFileTail).toHaveBeenCalledTimes(2);
@@ -125,7 +125,7 @@ describe("SessionManager", () => {
 
       const callback = vi.fn();
 
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
       manager.onNewMessages(callback);
 
       await manager.initialize();
@@ -165,7 +165,7 @@ describe("SessionManager", () => {
 
       const callback = vi.fn();
 
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
       manager.onNewMessages(callback);
 
       await manager.initialize();
@@ -182,7 +182,7 @@ describe("SessionManager", () => {
 
       const callback = vi.fn();
 
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
       manager.onNewMessages(callback);
 
       await manager.initialize();
@@ -193,7 +193,7 @@ describe("SessionManager", () => {
 
   describe("event subscription", () => {
     beforeEach(() => {
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
     });
 
     it("should allow subscribing to new messages", async () => {
@@ -238,7 +238,7 @@ describe("SessionManager", () => {
 
   describe("error handling", () => {
     beforeEach(() => {
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
     });
 
     it("should emit error event when parseFileTail fails during initialization", async () => {
@@ -329,7 +329,7 @@ describe("SessionManager", () => {
 
   describe("cleanup", () => {
     beforeEach(async () => {
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
       await manager.initialize();
     });
 
@@ -350,7 +350,7 @@ describe("SessionManager", () => {
       // After cleanup, initialize should not trigger the old listeners
       vi.mocked(parseFileTail).mockResolvedValue([mockUserMessage]);
 
-      manager = new SessionManager(mockSessionFiles, "project-1", "/path/to/project-1");
+      manager = new SessionManager(mockSessionFiles);
       await manager.initialize();
 
       expect(callback).not.toHaveBeenCalled();

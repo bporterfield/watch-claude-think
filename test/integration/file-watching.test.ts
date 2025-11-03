@@ -45,7 +45,7 @@ describe("file-watching integration", () => {
     // Set up watcher for single session
     let changeDetected = false;
     const watcher = new SessionWatcher(projectPath, [sessionPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         changeDetected = true;
       },
     });
@@ -94,7 +94,7 @@ describe("file-watching integration", () => {
       projectPath,
       [session1Path, session2Path],
       {
-        onChange: (filePath) => {
+        onChange: (filePath, _projectPath) => {
           changedFiles.add(filePath);
         },
       }
@@ -143,7 +143,7 @@ describe("file-watching integration", () => {
     // Watch and modify
     let changeDetected = false;
     const watcher = new SessionWatcher(project, [sessionPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         changeDetected = true;
       },
     });
@@ -176,7 +176,7 @@ describe("file-watching integration", () => {
 
     let changeCount = 0;
     const watcher = new SessionWatcher(projectPath, [sessionPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         changeCount++;
       },
     });
@@ -251,10 +251,10 @@ describe("file-watching integration", () => {
 
     // Use SessionWatcher to watch for new sessions in the project
     const watcher = new SessionWatcher(projectPath, [existingPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         // Change callback
       },
-      onNewSession: (newPath) => {
+      onNewSession: (newPath, _projectPath) => {
         // New session callback
         newSessionDetected = true;
         detectedPath = newPath;
@@ -293,10 +293,10 @@ describe("file-watching integration", () => {
 
     // Use SessionWatcher to watch for new sessions
     const watcher = new SessionWatcher(projectPath, [originalPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         // Change callback
       },
-      onNewSession: (newPath) => {
+      onNewSession: (newPath, _projectPath) => {
         // New session callback
         newSessionDetected = true;
         newSessionPath = newPath;
@@ -337,10 +337,10 @@ describe("file-watching integration", () => {
 
     // Watch only one session, enable new session detection
     const watcher = new SessionWatcher(projectPath, [watchedPath], {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         // Change callback
       },
-      onNewSession: (newPath) => {
+      onNewSession: (newPath, _projectPath) => {
         newSessionDetected = true;
         detectedPath = newPath;
       },
@@ -387,7 +387,7 @@ describe("file-watching integration", () => {
 
     let changeDetected = false;
     const watcher = new SessionWatcher(projectPath, allSessionPaths, {
-      onChange: () => {
+      onChange: (_filePath, _projectPath) => {
         changeDetected = true;
       },
     });

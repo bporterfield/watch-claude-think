@@ -286,6 +286,51 @@ async function getWorktreeInfo(cwd: string): Promise<WorktreeInfo | null> {
 }
 
 /**
+ * Map a worktree directory path to its Claude project directory path
+ * @param worktreePath Working directory path of the worktree (e.g., /Users/foo/repo-branch)
+ * @param claudeDir Optional path to Claude base directory (defaults to ~/.claude or CLAUDE_DIR env var)
+ * @returns Path to Claude project directory, or null if not found
+ */
+export async function getProjectPathForWorktree(
+  worktreePath: string,
+  claudeDir?: string
+): Promise<string | null> {
+  try {
+    // Claude Code encodes directory paths by replacing slashes with hyphens
+    // e.g., /Users/foo/repo-branch -> -Users-foo-repo-branch
+    // On Windows: C:\Users\foo\repo -> -C--Users-foo-repo
+    const normalizedPath = path.normalize(worktreePath);
+
+    // Replace path separators with hyphens, and handle drive letters on Windows
+    let encodedPath = normalizedPath.replace(/[\\/]/g, '-');
+
+    // If it doesn't start with a hyphen (relative path), add one
+    if (!encodedPath.startsWith('-')) {
+      encodedPath = '-' + encodedPath;
+    }
+
+    const claudeProjectsDir = getClaudeProjectsDir(claudeDir);
+    const projectPath = path.join(claudeProjectsDir, encodedPath);
+
+    // Check if this project directory exists
+    try {
+      const stats = await fs.stat(projectPath);
+      if (stats.isDirectory()) {
+        return projectPath;
+      }
+    } catch {
+      // Directory doesn't exist
+      return null;
+    }
+
+    return null;
+  } catch (error) {
+    logger.debug('Failed to map worktree to project path', { worktreePath, error });
+    return null;
+  }
+}
+
+/**
  * Get list of all Claude Code projects, sorted by most recent session
  * @param claudeDir Optional path to Claude base directory (defaults to ~/.claude or CLAUDE_DIR env var)
  */
