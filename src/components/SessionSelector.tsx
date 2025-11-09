@@ -86,7 +86,9 @@ export const SessionSelector: React.FC<SessionSelectorProps> = ({
     const options: Array<{ label: string; value: string }> = [];
 
     // Add "Watch all sessions (including worktrees)" option if worktrees exist
-    const worktreeCount = project.worktreeInfo?.relatedWorktrees?.length ?? 0;
+    // relatedWorktrees includes the current worktree, so subtract 1 for other worktrees
+    const totalWorktrees = project.worktreeInfo?.relatedWorktrees?.length ?? 0;
+    const worktreeCount = Math.max(0, totalWorktrees - 1);
     if (worktreeCount > 0) {
       const worktreeLabel =
         worktreeCount === 1
