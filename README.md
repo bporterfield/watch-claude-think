@@ -33,7 +33,7 @@ Or with other package managers:
 Watching Claude Code think is fun, and actually has been pretty useful:
 
 - It's an easy way to catch silly assumptions and interject before Claude spins its wheels on the wrong thing
-- Claude's thoughs can hint at alternative approaches, architecture choices, or dependencies
+- Claude's thoughts can hint at alternative approaches, architecture choices, or dependencies
 - It's a great way to improve prompting - you'll see quickly when Claude has the context it needs cleary does not
 - Claude often thinkgs things that it does not output, and some of those things are quite useful to read
 
