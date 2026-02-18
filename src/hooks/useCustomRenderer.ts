@@ -19,6 +19,7 @@ interface UseCustomRendererOptions {
   getSessionColor: (block: DisplayMessageBlock) => ChalkInstance | undefined;
   isSingleSession: boolean;
   isWatchingAllForProject: boolean;
+  showSubAgents: boolean;
 }
 
 export function useCustomRenderer({
@@ -28,6 +29,7 @@ export function useCustomRenderer({
   getSessionColor,
   isSingleSession,
   isWatchingAllForProject,
+  showSubAgents,
 }: UseCustomRendererOptions): void {
   // Track how many blocks we've already rendered
   const staticContentBlockCountRef = useRef(0);
@@ -76,8 +78,19 @@ export function useCustomRenderer({
     if (messageBlocks.length > staticContentBlockCountRef.current) {
       const newBlocks = messageBlocks.slice(staticContentBlockCountRef.current);
 
+      // Filter out sub-agent blocks when hidden
+      const visibleBlocks = showSubAgents
+        ? newBlocks
+        : newBlocks.filter((block) => block.type !== 'subagent');
+
+      // Always advance block count (append-only terminal — past output can't be un-rendered)
+      staticContentBlockCountRef.current = messageBlocks.length;
+
+      // Skip render if all new blocks were filtered out
+      if (visibleBlocks.length === 0) return;
+
       // Render new blocks to string
-      const newStaticOutput = newBlocks
+      const newStaticOutput = visibleBlocks
         .map((block) => {
           const sessionColor = getSessionColor(block);
           return renderBlockToString(block, {
@@ -110,8 +123,7 @@ export function useCustomRenderer({
         executeTerminalOperations(terminal, operations);
       }
 
-      // Update refs
-      staticContentBlockCountRef.current = messageBlocks.length;
+      // Update footer ref
       previousFooterRef.current = currentFooter;
     }
   }, [
@@ -119,6 +131,7 @@ export function useCustomRenderer({
     renderLogger,
     isSingleSession,
     isWatchingAllForProject,
+    showSubAgents,
     getSessionColor,
     renderFooter,
   ]);

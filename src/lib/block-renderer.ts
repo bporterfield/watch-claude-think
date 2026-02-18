@@ -81,6 +81,8 @@ export function renderBlockToString(
   // Add message type label
   if (block.type === 'thinking') {
     parts.push(chalk.bold(chalk.hex('#D97857')('Claude:')));
+  } else if (block.type === 'subagent') {
+    parts.push(chalk.bold(chalk.hex('#4ECDC4')(`Agent ${block.agentId}:`)));
   } else {
     parts.push(chalk.bold(chalk.blue('User:')));
   }

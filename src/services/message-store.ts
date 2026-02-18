@@ -1,11 +1,11 @@
-import type { ThinkingBlock, UserMessage } from '../lib/parser.js';
+import type { ThinkingBlock, UserMessage, SubAgentText } from '../lib/parser.js';
 import { logger } from '../lib/logger.js';
 import { getBlockKey } from '../lib/message-utils.js';
 
 /**
  * Message block with optional display metadata
  */
-export type DisplayMessageBlock = (ThinkingBlock | UserMessage) & {
+export type DisplayMessageBlock = (ThinkingBlock | UserMessage | SubAgentText) & {
   projectName?: string;
   sessionName?: string;
   sessionPath?: string;

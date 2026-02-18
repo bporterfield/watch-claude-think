@@ -35,6 +35,7 @@ export function isSystemMessage(text: string): boolean {
     text.startsWith('<local-command-stdout>') ||
     text.startsWith('Caveat:') ||
     text.startsWith('<system-reminder>') ||
+    text.startsWith('<task-notification>') ||
     text.length === 0
   );
 }

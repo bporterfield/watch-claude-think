@@ -4,7 +4,7 @@
  * for maximum performance with thousands of messages
  */
 
-import React, { useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { Box } from 'ink';
 import { assignSessionColors, getProjectColor } from '../lib/colors.js';
 import { renderFooterToString } from '../lib/footer-renderer.js';
@@ -91,6 +91,12 @@ export const StreamView: React.FC<StreamViewProps> = ({ sessionFiles, onBack }) 
   // Get Claude settings
   const { alwaysThinkingEnabled } = useClaudeSettings();
 
+  // Sub-agent visibility toggle
+  const [showSubAgents, setShowSubAgents] = useState(false);
+  const toggleSubAgents = useCallback(() => {
+    setShowSubAgents((prev) => !prev);
+  }, []);
+
   // Render footer to string
   const renderFooter = useCallback((): string => {
     return renderFooterToString({
@@ -102,8 +108,9 @@ export const StreamView: React.FC<StreamViewProps> = ({ sessionFiles, onBack }) 
       showBack: !!onBack,
       terminalWidth: process.stdout.columns ?? DEFAULT_TERMINAL_WIDTH,
       alwaysThinkingEnabled: alwaysThinkingEnabled ?? false,
+      showSubAgents,
     });
-  }, [isSingleSession, isWatchingAllForProject, isWatchingWorktrees, projectName, singleSessionInfo, onBack, alwaysThinkingEnabled]);
+  }, [isSingleSession, isWatchingAllForProject, isWatchingWorktrees, projectName, singleSessionInfo, onBack, alwaysThinkingEnabled, showSubAgents]);
 
   // Memoize initial render frame to avoid recreating on every render
   const initialRenderFrame = useMemo(
@@ -130,10 +137,11 @@ export const StreamView: React.FC<StreamViewProps> = ({ sessionFiles, onBack }) 
     getSessionColor,
     isSingleSession,
     isWatchingAllForProject: isWatchingAllForProject ?? false,
+    showSubAgents,
   });
 
   // Handle keyboard input
-  useKeyboardInput({ onBack });
+  useKeyboardInput({ onBack, onToggleSubAgents: toggleSubAgents });
 
   // Handle terminal resize
   useTerminalResize({ renderLogger, renderFooter });

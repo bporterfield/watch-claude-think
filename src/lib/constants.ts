@@ -174,3 +174,14 @@ export const FILE_OPERATION_QUEUE_CONCURRENCY = 1;
  * Default: 1024 * 1024 (1 MB = 1,048,576 bytes)
  */
 export const BYTES_TO_MB = 1024 * 1024;
+
+/**
+ * Minimum character length for sub-agent text content to be displayed
+ *
+ * Sub-agent assistant messages shorter than this are filtered out to skip
+ * warmup/trivial messages (e.g., "I'll help with that" or tool confirmations).
+ * Only substantial narration (research reports, plans, analysis) is shown.
+ *
+ * Default: 200 characters
+ */
+export const MIN_SUBAGENT_TEXT_LENGTH = 200;

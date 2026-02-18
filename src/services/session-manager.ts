@@ -1,4 +1,13 @@
-import { parseNewLines, parseFileTail, extractSessionInfo } from '../lib/parser.js';
+import fs from 'fs';
+import path from 'path';
+import {
+  parseNewLines,
+  parseFileTail,
+  parseSubAgentNewLines,
+  parseSubAgentFileTail,
+  extractSessionInfo,
+  extractAgentIdFromPath,
+} from '../lib/parser.js';
 import type { DisplayMessageBlock } from './message-store.js';
 import { logger } from '../lib/logger.js';
 import { SessionWatcher } from '../lib/session-watcher.js';
@@ -120,6 +129,23 @@ export class SessionManager {
       }
     }
 
+    // Scan for existing sub-agent files in each session's subagents/ directory
+    for (const { sessionPath, projectName, sessionName } of this.sessionFiles) {
+      try {
+        const subAgentMessages = await this.loadExistingSubAgents(
+          sessionPath,
+          projectName,
+          sessionName,
+        );
+        messages.push(...subAgentMessages);
+      } catch (error) {
+        logger.debug('[SessionManager] Failed to scan sub-agents for session', {
+          sessionPath,
+          error,
+        });
+      }
+    }
+
     if (messages.length > 0) {
       // Sort by timestamp
       messages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -175,6 +201,13 @@ export class SessionManager {
         : async (newFilePath, projectPath) => {
             await this.handleNewSession(newFilePath, projectPath);
           },
+      // Sub-agent callbacks are always enabled
+      onSubAgentChange: async (filePath, projectPath) => {
+        await this.handleSubAgentChange(filePath, projectPath);
+      },
+      onNewSubAgent: async (filePath, projectPath) => {
+        await this.handleNewSubAgent(filePath, projectPath);
+      },
     });
   }
 
@@ -425,6 +458,194 @@ export class SessionManager {
     } else {
       logger.debug('[SessionManager] No messages in new session file yet', { newFilePath });
     }
+  }
+
+  /**
+   * Resolve parent session metadata from a sub-agent file path
+   *
+   * Path format: {projectPath}/{sessionId}/subagents/agent-{id}.jsonl
+   * Extracts sessionId, looks up parent session in sessionFilesMap for projectName/sessionName
+   */
+  private resolveSubAgentSessionInfo(
+    filePath: string,
+    projectPath: string,
+  ): { projectName: string; sessionName: string; sessionPath: string } | null {
+    // Extract session ID from path: {projectPath}/{sessionId}/subagents/agent-{id}.jsonl
+    const relativePath = filePath.substring(projectPath.length + 1); // +1 for trailing /
+    const sessionId = relativePath.split('/')[0];
+    if (!sessionId) {
+      return null;
+    }
+
+    // Look up the parent session file
+    const parentSessionPath = path.join(projectPath, `${sessionId}.jsonl`);
+    const parentSession = this.sessionFilesMap.get(parentSessionPath);
+
+    if (parentSession) {
+      return {
+        projectName: parentSession.projectName,
+        sessionName: parentSession.sessionName,
+        sessionPath: parentSessionPath,
+      };
+    }
+
+    // Fallback: use project name from path mapping
+    const projectName = this.projectPathToNameMap.get(projectPath) || 'Unknown Project';
+    return {
+      projectName,
+      sessionName: sessionId,
+      sessionPath: parentSessionPath,
+    };
+  }
+
+  /**
+   * Handle sub-agent file change event
+   */
+  private async handleSubAgentChange(filePath: string, projectPath: string): Promise<void> {
+    const sessionInfo = this.resolveSubAgentSessionInfo(filePath, projectPath);
+    if (!sessionInfo) {
+      logger.warn('[SessionManager] Could not resolve sub-agent session info', {
+        filePath,
+        projectPath,
+      });
+      return;
+    }
+
+    let newBlocks;
+    try {
+      newBlocks = await parseSubAgentNewLines(filePath);
+    } catch (error) {
+      logger.error('Failed to parse sub-agent file', { filePath, error });
+      this.notifyError({
+        type: 'parse-error',
+        filePath,
+        error,
+        recoverable: true,
+      });
+      return;
+    }
+
+    if (newBlocks.length > 0) {
+      const messages: DisplayMessageBlock[] = newBlocks.map((b) => ({
+        ...b,
+        projectName: sessionInfo.projectName,
+        sessionName: sessionInfo.sessionName,
+        sessionPath: sessionInfo.sessionPath,
+      }));
+
+      this.notifyNewMessages({
+        messages,
+        source: 'change',
+      });
+    }
+  }
+
+  /**
+   * Handle new sub-agent file detection
+   */
+  private async handleNewSubAgent(filePath: string, projectPath: string): Promise<void> {
+    const sessionInfo = this.resolveSubAgentSessionInfo(filePath, projectPath);
+    if (!sessionInfo) {
+      logger.warn('[SessionManager] Could not resolve sub-agent session info for new file', {
+        filePath,
+        projectPath,
+      });
+      return;
+    }
+
+    const agentId = extractAgentIdFromPath(filePath);
+    logger.debug('[SessionManager] New sub-agent detected', {
+      filePath,
+      agentId,
+      projectName: sessionInfo.projectName,
+      sessionName: sessionInfo.sessionName,
+    });
+
+    let newBlocks;
+    try {
+      newBlocks = await parseSubAgentFileTail(filePath);
+    } catch (error) {
+      logger.error('Failed to parse new sub-agent file', { filePath, error });
+      this.notifyError({
+        type: 'parse-error',
+        filePath,
+        error,
+        recoverable: true,
+      });
+      return;
+    }
+
+    if (newBlocks.length > 0) {
+      const messages: DisplayMessageBlock[] = newBlocks.map((b) => ({
+        ...b,
+        projectName: sessionInfo.projectName,
+        sessionName: sessionInfo.sessionName,
+        sessionPath: sessionInfo.sessionPath,
+      }));
+
+      this.notifyNewMessages({
+        messages,
+        source: 'new-session',
+      });
+    }
+  }
+
+  /**
+   * Load existing sub-agent files for a session during initialization
+   */
+  private async loadExistingSubAgents(
+    sessionPath: string,
+    projectName: string,
+    sessionName: string,
+  ): Promise<DisplayMessageBlock[]> {
+    // Session path: {projectPath}/{sessionId}.jsonl
+    // Sub-agents dir: {projectPath}/{sessionId}/subagents/
+    const sessionId = path.basename(sessionPath, '.jsonl');
+    const projectDir = path.dirname(sessionPath);
+    const subagentsDir = path.join(projectDir, sessionId, 'subagents');
+
+    let entries;
+    try {
+      entries = fs.readdirSync(subagentsDir);
+    } catch {
+      // No subagents directory - this is normal
+      return [];
+    }
+
+    const messages: DisplayMessageBlock[] = [];
+    const agentFiles = entries.filter(
+      (e) => e.startsWith('agent-') && e.endsWith('.jsonl'),
+    );
+
+    for (const agentFile of agentFiles) {
+      const agentFilePath = path.join(subagentsDir, agentFile);
+      try {
+        const blocks = await parseSubAgentFileTail(agentFilePath);
+        for (const block of blocks) {
+          messages.push({
+            ...block,
+            projectName,
+            sessionName,
+            sessionPath,
+          });
+        }
+      } catch (error) {
+        logger.debug('[SessionManager] Failed to parse sub-agent file during init', {
+          agentFilePath,
+          error,
+        });
+      }
+    }
+
+    if (messages.length > 0) {
+      logger.debug('[SessionManager] Loaded existing sub-agent messages', {
+        sessionPath,
+        agentFileCount: agentFiles.length,
+        messageCount: messages.length,
+      });
+    }
+
+    return messages;
   }
 
   /**

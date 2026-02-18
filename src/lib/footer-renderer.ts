@@ -20,6 +20,7 @@ export interface FooterOptions {
   showBack: boolean;
   terminalWidth: number;
   alwaysThinkingEnabled: boolean;
+  showSubAgents: boolean;
 }
 
 /**
@@ -43,6 +44,7 @@ export function renderFooterToString(options: FooterOptions): string {
     showBack,
     terminalWidth,
     alwaysThinkingEnabled,
+    showSubAgents,
   } = options;
 
   const lines: string[] = [];
@@ -98,6 +100,8 @@ export function renderFooterToString(options: FooterOptions): string {
     } else {
       navLine += chalk.red('off') + chalk.dim(' for new Claude instances (Tab in claude toggle)');
     }
+
+    navLine += chalk.dim(' | [a] subagent messages: ') + (showSubAgents ? chalk.green('on') : chalk.red('off'));
 
     // Truncate if needed to prevent wrapping
     const visibleLength = stripAnsi(navLine).length;

@@ -25,6 +25,7 @@ export const FIXTURES = {
   EMPTY: "empty-session.jsonl",
   ORPHANED_SUMMARY: "orphaned-summary.jsonl",
   SIDECHAIN_ONLY: "sidechain-only.jsonl",
+  SUBAGENT_SIMPLE: "simple-test-session/subagents/agent-test123.jsonl",
 } as const;
 
 /**

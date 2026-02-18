@@ -9,6 +9,9 @@ import {
   containsAnyUuid,
   getLastMessageUuid,
   resetFilePosition,
+  isSubAgentFile,
+  extractAgentIdFromPath,
+  parseSubAgentNewLines,
 } from "../../src/lib/parser.js";
 import {
   createTempClaudeDir,
@@ -517,6 +520,116 @@ describe("parser", () => {
 
       // Clean up for next test
       resetFilePosition(sessionPath);
+    });
+  });
+
+  describe("isSubAgentFile", () => {
+    it("should return true for sub-agent file paths", () => {
+      expect(isSubAgentFile("/path/to/project/session-id/subagents/agent-abc123.jsonl")).toBe(true);
+      expect(isSubAgentFile("/home/user/.claude/projects/foo/bar-session/subagents/agent-xyz.jsonl")).toBe(true);
+    });
+
+    it("should return false for regular session files", () => {
+      expect(isSubAgentFile("/path/to/project/session.jsonl")).toBe(false);
+      expect(isSubAgentFile("/path/to/project/subagents.jsonl")).toBe(false);
+    });
+
+    it("should return false for non-jsonl files", () => {
+      expect(isSubAgentFile("/path/to/project/session/subagents/agent-abc.txt")).toBe(false);
+    });
+  });
+
+  describe("extractAgentIdFromPath", () => {
+    it("should extract agent ID from valid sub-agent paths", () => {
+      expect(extractAgentIdFromPath("/path/to/session/subagents/agent-abc123.jsonl")).toBe("abc123");
+      expect(extractAgentIdFromPath("/path/subagents/agent-my-long-id.jsonl")).toBe("my-long-id");
+    });
+
+    it("should return null for paths that don't match", () => {
+      expect(extractAgentIdFromPath("/path/to/session.jsonl")).toBeNull();
+      expect(extractAgentIdFromPath("/path/to/subagents/notanagent.jsonl")).toBeNull();
+    });
+  });
+
+  describe("parseSubAgentNewLines", () => {
+    it("should extract substantial text blocks from sub-agent fixture", async () => {
+      const agentPath = path.join(FIXTURE_PROJECT, FIXTURES.SUBAGENT_SIMPLE);
+
+      const blocks = await parseSubAgentNewLines(agentPath);
+
+      // Should only get the substantial text block (>= 200 chars), not the short one
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]).toMatchObject({
+        type: "subagent",
+        agentId: "test123",
+        sessionId: "simple-test-session",
+      });
+      expect(blocks[0]?.content).toContain("parseConfig");
+
+      resetFilePosition(agentPath);
+    });
+
+    it("should filter out text shorter than MIN_SUBAGENT_TEXT_LENGTH", async () => {
+      const agentPath = path.join(FIXTURE_PROJECT, FIXTURES.SUBAGENT_SIMPLE);
+
+      const blocks = await parseSubAgentNewLines(agentPath);
+
+      // The short message "I'll search for that function now." should be filtered
+      const shortBlocks = blocks.filter(
+        (b) => b.content.includes("I'll search for that function now")
+      );
+      expect(shortBlocks).toHaveLength(0);
+
+      resetFilePosition(agentPath);
+    });
+
+    it("should track file position for incremental reads", async () => {
+      tempClaudeDir = await createTempClaudeDir();
+      tempProjectPath = await createTestProject(tempClaudeDir, "test-project");
+
+      const subagentsDir = path.join(tempProjectPath, "test-session", "subagents");
+      await fs.mkdir(subagentsDir, { recursive: true });
+      const agentPath = path.join(subagentsDir, "agent-incr123.jsonl");
+      await copyFixture(FIXTURES.SUBAGENT_SIMPLE, agentPath);
+
+      // First read
+      const blocks1 = await parseSubAgentNewLines(agentPath);
+      expect(blocks1.length).toBeGreaterThan(0);
+
+      // Second read without changes - should return empty
+      const blocks2 = await parseSubAgentNewLines(agentPath);
+      expect(blocks2).toHaveLength(0);
+
+      // Append new substantial content
+      const longText = "A".repeat(250);
+      const newLine = JSON.stringify({
+        type: "assistant",
+        message: {
+          model: "claude-haiku-4",
+          id: "sa-msg-new",
+          type: "message",
+          role: "assistant",
+          content: [{ type: "text", text: longText }],
+          stop_reason: "end_turn",
+          stop_sequence: null,
+          usage: { input_tokens: 100, output_tokens: 100 },
+        },
+        uuid: "sa-assistant-new",
+        timestamp: "2025-01-15T10:00:10.000Z",
+        sessionId: "test-session",
+        parentUuid: "sa-assistant-2",
+        isSidechain: false,
+        userType: "default",
+        cwd: "/Users/test/project",
+        version: "1.0.0",
+        gitBranch: "main",
+      });
+      await appendToFile(agentPath, newLine);
+
+      // Third read - should only get the new block
+      const blocks3 = await parseSubAgentNewLines(agentPath);
+      expect(blocks3).toHaveLength(1);
+      expect(blocks3[0]?.content).toBe(longText);
     });
   });
 });

@@ -8,12 +8,17 @@ import { useInput } from 'ink';
 
 interface UseKeyboardInputOptions {
   onBack?: () => void;
+  onToggleSubAgents?: () => void;
 }
 
-export function useKeyboardInput({ onBack }: UseKeyboardInputOptions): void {
+export function useKeyboardInput({ onBack, onToggleSubAgents }: UseKeyboardInputOptions): void {
   useInput((input, key) => {
     if (key.escape && onBack) {
       onBack();
+    }
+
+    if (input === 'a' && onToggleSubAgents) {
+      onToggleSubAgents();
     }
   });
 }

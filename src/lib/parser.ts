@@ -13,6 +13,7 @@ import {
   FILE_TAIL_BYTES,
   LAST_MESSAGE_BYTES,
   SESSION_NAME_MAX_LENGTH,
+  MIN_SUBAGENT_TEXT_LENGTH,
 } from './constants.js';
 
 export interface ThinkingBlock {
@@ -33,7 +34,16 @@ export interface UserMessage {
   parentUuid: string | null;
 }
 
-export type MessageBlock = ThinkingBlock | UserMessage;
+export interface SubAgentText {
+  type: 'subagent';
+  content: string;
+  timestamp: string;
+  sessionId: string;
+  messageId: string;
+  agentId: string;
+}
+
+export type MessageBlock = ThinkingBlock | UserMessage | SubAgentText;
 
 /**
  * Simple LRU cache implementation for file positions
@@ -1062,6 +1072,196 @@ export async function getAllConversationsInFile(
       });
 
       resolve(branches);
+    });
+
+    rl.on('error', (error) => {
+      reject(error);
+    });
+  });
+}
+
+/**
+ * Check if a file path is a sub-agent JSONL file
+ *
+ * Sub-agent files live at: {projectPath}/{sessionId}/subagents/agent-{id}.jsonl
+ */
+export function isSubAgentFile(filePath: string): boolean {
+  return filePath.includes('/subagents/agent-') && filePath.endsWith('.jsonl');
+}
+
+/**
+ * Extract the agent ID from a sub-agent file path
+ *
+ * Path format: .../subagents/agent-{id}.jsonl
+ * Returns the {id} portion, or null if the path doesn't match
+ */
+export function extractAgentIdFromPath(filePath: string): string | null {
+  const match = filePath.match(/\/subagents\/agent-([^/]+)\.jsonl$/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Extract text content from a sub-agent assistant message entry
+ * Returns substantial text blocks (>= MIN_SUBAGENT_TEXT_LENGTH chars)
+ */
+function extractSubAgentTextBlocks(
+  entry: ClaudeMessageEntry,
+  agentId: string,
+): SubAgentText[] {
+  if (entry.type !== 'assistant') {
+    return [];
+  }
+
+  const message = entry.message;
+
+  if (!('content' in message) || !Array.isArray(message.content)) {
+    return [];
+  }
+
+  const blocks: SubAgentText[] = [];
+
+  for (const item of message.content) {
+    if (typeof item === 'object' && item.type === 'text' && 'text' in item) {
+      const text = (item.text as string).trim();
+      if (text.length >= MIN_SUBAGENT_TEXT_LENGTH) {
+        blocks.push({
+          type: 'subagent',
+          content: text,
+          timestamp: entry.timestamp,
+          sessionId: entry.sessionId,
+          messageId: entry.uuid,
+          agentId,
+        });
+      }
+    }
+  }
+
+  return blocks;
+}
+
+/**
+ * Parse new lines from a sub-agent JSONL file since last read
+ * Extracts substantial text content from assistant messages
+ */
+export async function parseSubAgentNewLines(filePath: string): Promise<SubAgentText[]> {
+  const agentId = extractAgentIdFromPath(filePath);
+  if (!agentId) {
+    logger.warn('[parseSubAgentNewLines] Could not extract agent ID from path', { filePath });
+    return [];
+  }
+
+  const lastPosition = filePositions.get(filePath) || 0;
+  const blocks: SubAgentText[] = [];
+
+  return new Promise((resolve, reject) => {
+    const stream = fs.createReadStream(filePath, {
+      start: lastPosition,
+      encoding: 'utf-8',
+    });
+
+    const rl = readline.createInterface({
+      input: stream,
+      crlfDelay: Infinity,
+    });
+
+    let currentPosition = lastPosition;
+
+    rl.on('line', (line) => {
+      currentPosition += Buffer.byteLength(line, 'utf-8') + 1;
+
+      if (!line.trim()) {
+        return;
+      }
+
+      try {
+        const entry = JSON.parse(line) as JSONLEntry;
+
+        if (entry.type === 'assistant') {
+          const textBlocks = extractSubAgentTextBlocks(entry as ClaudeMessageEntry, agentId);
+          blocks.push(...textBlocks);
+        }
+      } catch (error) {
+        logger.debug('Skipped invalid JSON line in parseSubAgentNewLines', { filePath, error });
+      }
+    });
+
+    rl.on('close', () => {
+      filePositions.set(filePath, currentPosition);
+      resolve(blocks);
+    });
+
+    rl.on('error', (error) => {
+      reject(error);
+    });
+  });
+}
+
+/**
+ * Parse only the tail of a sub-agent JSONL file
+ * Used for initial load of existing sub-agent files
+ */
+export async function parseSubAgentFileTail(
+  filePath: string,
+  maxBytes: number = FILE_TAIL_BYTES,
+): Promise<SubAgentText[]> {
+  const agentId = extractAgentIdFromPath(filePath);
+  if (!agentId) {
+    logger.warn('[parseSubAgentFileTail] Could not extract agent ID from path', { filePath });
+    return [];
+  }
+
+  const stats = await fs.promises.stat(filePath);
+  const fileSize = stats.size;
+
+  if (fileSize <= maxBytes) {
+    resetFilePosition(filePath);
+    return parseSubAgentNewLines(filePath);
+  }
+
+  const startPosition = fileSize - maxBytes;
+
+  return new Promise((resolve, reject) => {
+    const blocks: SubAgentText[] = [];
+    const stream = fs.createReadStream(filePath, {
+      start: startPosition,
+      encoding: 'utf-8',
+    });
+
+    const rl = readline.createInterface({
+      input: stream,
+      crlfDelay: Infinity,
+    });
+
+    let firstLine = true;
+    let currentPosition = startPosition;
+
+    rl.on('line', (line) => {
+      currentPosition += Buffer.byteLength(line, 'utf-8') + 1;
+
+      if (firstLine) {
+        firstLine = false;
+        return;
+      }
+
+      if (!line.trim()) {
+        return;
+      }
+
+      try {
+        const entry = JSON.parse(line) as JSONLEntry;
+
+        if (entry.type === 'assistant') {
+          const textBlocks = extractSubAgentTextBlocks(entry as ClaudeMessageEntry, agentId);
+          blocks.push(...textBlocks);
+        }
+      } catch (error) {
+        logger.debug('Skipped invalid JSON line in parseSubAgentFileTail', { filePath, error });
+      }
+    });
+
+    rl.on('close', () => {
+      filePositions.set(filePath, currentPosition);
+      resolve(blocks);
     });
 
     rl.on('error', (error) => {

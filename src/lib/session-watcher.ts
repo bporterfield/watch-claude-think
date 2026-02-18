@@ -1,6 +1,6 @@
 import chokidar, { type FSWatcher } from 'chokidar';
 import PQueue from 'p-queue';
-import { extractSessionInfo } from './parser.js';
+import { extractSessionInfo, isSubAgentFile } from './parser.js';
 import { logger } from './logger.js';
 import {
   FILE_OPERATION_QUEUE_CONCURRENCY,
@@ -16,6 +16,8 @@ import {
 export interface SessionWatcherCallbacks {
   onChange: (filePath: string, projectPath: string) => void;
   onNewSession?: (newFilePath: string, projectPath: string) => void;
+  onSubAgentChange?: (filePath: string, projectPath: string) => void;
+  onNewSubAgent?: (filePath: string, projectPath: string) => void;
 }
 
 /**
@@ -74,7 +76,7 @@ export class SessionWatcher {
     this.watcher = chokidar.watch(this.projectPaths, {
       persistent: true,
       ignoreInitial: true,
-      depth: 0, // Only watch files directly in each directory
+      depth: 2, // Watch files in each directory and subagent subdirectories
       awaitWriteFinish: {
         stabilityThreshold: WATCHER_STABILITY_THRESHOLD,
         pollInterval: WATCHER_POLL_INTERVAL,
@@ -91,8 +93,39 @@ export class SessionWatcher {
 
     // Handle file changes
     this.watcher.on('change', (changedPath) => {
-      // Filter: only care about .jsonl files we're watching
-      if (!changedPath.endsWith('.jsonl') || !this.watchedFiles.has(changedPath)) {
+      if (!changedPath.endsWith('.jsonl')) {
+        return;
+      }
+
+      // Route sub-agent file changes separately
+      if (isSubAgentFile(changedPath)) {
+        if (!this.callbacks.onSubAgentChange) {
+          return;
+        }
+
+        const projectPath = this.projectPaths.find((p) => changedPath.startsWith(p));
+        if (!projectPath) {
+          return;
+        }
+
+        logger.debug('[SessionWatcher] Sub-agent file changed', { changedPath, projectPath });
+
+        void this.queue.add(async () => {
+          try {
+            callbacks.onSubAgentChange!(changedPath, projectPath);
+          } catch (error) {
+            logger.error('Error handling sub-agent file change in queue', {
+              filePath: changedPath,
+              projectPath,
+              error,
+            });
+          }
+        });
+        return;
+      }
+
+      // Regular session file: only care about files we're watching
+      if (!this.watchedFiles.has(changedPath)) {
         return;
       }
 
@@ -122,8 +155,34 @@ export class SessionWatcher {
 
     // Handle new session files
     this.watcher.on('add', (newFilePath) => {
-      // Only process .jsonl files
       if (!newFilePath.endsWith('.jsonl')) {
+        return;
+      }
+
+      // Route new sub-agent files separately
+      if (isSubAgentFile(newFilePath)) {
+        if (!this.callbacks.onNewSubAgent) {
+          return;
+        }
+
+        const projectPath = this.projectPaths.find((p) => newFilePath.startsWith(p));
+        if (!projectPath) {
+          return;
+        }
+
+        logger.debug('[SessionWatcher] New sub-agent file detected', { newFilePath, projectPath });
+
+        void this.queue.add(async () => {
+          try {
+            callbacks.onNewSubAgent!(newFilePath, projectPath);
+          } catch (error) {
+            logger.error('Error handling new sub-agent file in queue', {
+              filePath: newFilePath,
+              projectPath,
+              error,
+            });
+          }
+        });
         return;
       }
 

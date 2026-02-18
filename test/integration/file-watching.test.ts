@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from "path";
+import fs from "fs/promises";
 import { listProjects, getAllSessionFilePaths, listConversations } from "../../src/lib/file-system.js";
 import { SessionWatcher } from "../../src/lib/session-watcher.js";
 import { parseNewLines } from "../../src/lib/parser.js";
@@ -410,6 +411,141 @@ describe("file-watching integration", () => {
       type: "user",
       content: "Real question",
     });
+
+    await watcher.close();
+  });
+
+  it("should trigger onSubAgentChange when a sub-agent file is modified", async () => {
+    const projectPath = await createTestProject(claudeDir, "subagent-change");
+    const sessionPath = path.join(projectPath, "main-session.jsonl");
+    await copyFixture(FIXTURES.SIMPLE, sessionPath);
+
+    // Create sub-agent directory and file
+    const subagentsDir = path.join(projectPath, "main-session", "subagents");
+    await fs.mkdir(subagentsDir, { recursive: true });
+    const agentPath = path.join(subagentsDir, "agent-abc123.jsonl");
+    await copyFixture(FIXTURES.SUBAGENT_SIMPLE, agentPath);
+
+    let subAgentChangeDetected = false;
+    let detectedPath = "";
+
+    const watcher = new SessionWatcher(projectPath, [sessionPath], {
+      onChange: (_filePath, _projectPath) => {
+        // Regular change callback
+      },
+      onSubAgentChange: (filePath, _projectPath) => {
+        subAgentChangeDetected = true;
+        detectedPath = filePath;
+      },
+      onNewSubAgent: (_filePath, _projectPath) => {
+        // Initial add event from watcher setup
+      },
+    });
+
+    await watcher.waitForReady();
+
+    // Append a new message to the sub-agent file
+    const longText = "B".repeat(250);
+    const newMsg = JSON.stringify({
+      type: "assistant",
+      message: {
+        model: "claude-haiku-4",
+        id: "sa-new",
+        type: "message",
+        role: "assistant",
+        content: [{ type: "text", text: longText }],
+        stop_reason: "end_turn",
+        stop_sequence: null,
+        usage: { input_tokens: 100, output_tokens: 100 },
+      },
+      uuid: "sa-new-uuid",
+      timestamp: "2025-01-15T10:00:10.000Z",
+      sessionId: "main-session",
+      parentUuid: "sa-assistant-2",
+      isSidechain: false,
+      userType: "default",
+      cwd: "/Users/test/project",
+      version: "1.0.0",
+      gitBranch: "main",
+    });
+    await appendToFile(agentPath, newMsg);
+
+    await waitFor(() => subAgentChangeDetected, TIMEOUTS.fileChange, 'sub-agent change detection');
+
+    expect(subAgentChangeDetected).toBe(true);
+    expect(detectedPath).toBe(agentPath);
+
+    await watcher.close();
+  });
+
+  it("should trigger onNewSubAgent when a new sub-agent file appears", async () => {
+    const projectPath = await createTestProject(claudeDir, "subagent-new");
+    const sessionPath = path.join(projectPath, "main-session.jsonl");
+    await copyFixture(FIXTURES.SIMPLE, sessionPath);
+
+    // Create the subagents directory ahead of time
+    const subagentsDir = path.join(projectPath, "main-session", "subagents");
+    await fs.mkdir(subagentsDir, { recursive: true });
+
+    let newSubAgentDetected = false;
+    let detectedPath = "";
+
+    const watcher = new SessionWatcher(projectPath, [sessionPath], {
+      onChange: (_filePath, _projectPath) => {
+        // Regular change callback
+      },
+      onNewSubAgent: (filePath, _projectPath) => {
+        newSubAgentDetected = true;
+        detectedPath = filePath;
+      },
+    });
+
+    await watcher.waitForReady();
+
+    // Create a new sub-agent file
+    const agentPath = path.join(subagentsDir, "agent-new456.jsonl");
+    await copyFixture(FIXTURES.SUBAGENT_SIMPLE, agentPath);
+
+    await waitForWithRetry(
+      () => newSubAgentDetected,
+      TIMEOUTS.newSession,
+      undefined,
+      'new sub-agent detection'
+    );
+
+    expect(newSubAgentDetected).toBe(true);
+    expect(detectedPath).toBe(agentPath);
+
+    await watcher.close();
+  });
+
+  it("should not affect main session file watching when sub-agents are present", async () => {
+    const projectPath = await createTestProject(claudeDir, "subagent-coexist");
+    const sessionPath = path.join(projectPath, "coexist-session.jsonl");
+    await copyFixture(FIXTURES.SIMPLE, sessionPath);
+    await parseNewLines(sessionPath);
+
+    let regularChangeDetected = false;
+
+    const watcher = new SessionWatcher(projectPath, [sessionPath], {
+      onChange: (_filePath, _projectPath) => {
+        regularChangeDetected = true;
+      },
+      onSubAgentChange: (_filePath, _projectPath) => {
+        // Sub-agent callback
+      },
+    });
+
+    await watcher.waitForReady();
+
+    // Modify main session file
+    const newMsg =
+      '{"type":"user","message":{"role":"user","content":"Main session update"},"uuid":"main-new-1","timestamp":"2025-01-15T10:00:10.000Z","sessionId":"coexist-session","parentUuid":"assistant-msg-1","isSidechain":false,"userType":"default","cwd":"/Users/test/project","version":"1.0.0","gitBranch":"main"}';
+    await appendToFile(sessionPath, newMsg);
+
+    await waitFor(() => regularChangeDetected, TIMEOUTS.fileChange, 'main session change detection with sub-agents');
+
+    expect(regularChangeDetected).toBe(true);
 
     await watcher.close();
   });
