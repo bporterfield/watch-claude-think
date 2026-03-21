@@ -17,6 +17,7 @@ import { logger } from "../lib/logger.js";
 
 type AppState =
   | { stage: "loading" }
+  | { stage: "loading-conversations"; projectName: string }
   | { stage: "select-project"; projects: ProjectInfo[] }
   | {
       stage: "select-conversation";
@@ -72,6 +73,10 @@ export const App: React.FC = () => {
   const handleProjectSelect = async (project: ProjectInfo) => {
     if (state.stage !== "select-project") return;
 
+    // Save projects for back navigation before changing state
+    const projects = state.projects;
+    setState({ stage: "loading-conversations", projectName: project.name });
+
     try {
       let memUsage = process.memoryUsage();
       logger.info('[App] Project selected - loading conversations', {
@@ -98,7 +103,7 @@ export const App: React.FC = () => {
         // Push current state to navigation stack for back navigation
         setNavigationStack([
           ...navigationStack,
-          { type: "project-list", projects: state.projects },
+          { type: "project-list", projects },
         ]);
 
         // Clear screen AND scrollback buffer before showing conversation selector
@@ -299,6 +304,14 @@ export const App: React.FC = () => {
     return (
       <Box>
         <Text>Loading...</Text>
+      </Box>
+    );
+  }
+
+  if (state.stage === "loading-conversations") {
+    return (
+      <Box>
+        <Text>Loading conversations for {state.projectName}...</Text>
       </Box>
     );
   }

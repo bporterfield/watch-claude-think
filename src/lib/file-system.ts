@@ -444,7 +444,7 @@ export async function getAllSessionFilePaths(projectPath: string): Promise<strin
  * Returns one entry per conversation branch (leaf message)
  * A single session file can contain multiple conversation branches
  */
-export async function listConversations(projectPath: string): Promise<ConversationInfo[]> {
+export async function listConversations(projectPath: string, maxFiles = 50): Promise<ConversationInfo[]> {
   try {
     const entries = await fs.readdir(projectPath, { withFileTypes: true });
     const sessionFiles = entries.filter((entry) => entry.isFile() && entry.name.endsWith('.jsonl'));
@@ -453,18 +453,28 @@ export async function listConversations(projectPath: string): Promise<Conversati
       return [];
     }
 
+    // Stat files and sort by mtime so we only parse the most recent ones
+    const filesWithStats = await Promise.all(
+      sessionFiles.map(async (entry) => {
+        const filePath = path.join(projectPath, entry.name);
+        const stats = await fs.stat(filePath);
+        return { entry, mtime: stats.mtime };
+      }),
+    );
+    filesWithStats.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+    const recentFiles = filesWithStats.slice(0, maxFiles);
+
     // Import function from parser
     const { extractSummariesAndConversations } = await import('./parser.js');
 
-    // SINGLE PASS: Extract both summaries AND conversations from all files
-    // This is much faster than reading each file twice
     logger.debug('[listConversations] Extracting summaries and conversations', {
       projectPath,
-      fileCount: sessionFiles.length,
+      totalFiles: sessionFiles.length,
+      parsingFiles: recentFiles.length,
     });
 
     const fileResults = await Promise.all(
-      sessionFiles.map(async (entry) => {
+      recentFiles.map(async ({ entry }) => {
         const filePath = path.join(projectPath, entry.name);
         const sessionId = entry.name.replace('.jsonl', '');
 
